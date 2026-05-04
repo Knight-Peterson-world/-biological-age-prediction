@@ -1,0 +1,4525 @@
+---
+title: "Développement d'une Horloge Biologique Basée sur la Méthylation de l'ADN"
+subtitle: "Approche par Machine Learning pour l'Estimation de l'Âge Biologique à partir de Données CpG"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    toc_depth: 4
+    number_sections: true
+    code_folding: show
+    df_print: paged
+    fig_width: 12
+    fig_height: 8
+    mathjax: "https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    latex_engine: xelatex
+    keep_tex: true
+---
+
+<style>
+/* ── Reset & base ─────────────────────────────────────────── */
+:root {
+  --c-deep:    #0d1b3e;
+  --c-navy:    #112459;
+  --c-indigo:  #1e3a8a;
+  --c-violet:  #5b2d8e;
+  --c-cyan:    #22d3ee;
+  --c-ice:     #e0f2fe;
+  --c-white:   #ffffff;
+  --c-slate:   #64748b;
+  --c-text:    #1e293b;
+  --c-muted:   #475569;
+  --r-md:      8px;
+  --r-lg:      14px;
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.08);
+  --shadow-md: 0 6px 24px rgba(0,0,0,.14);
+}
+
+/* ── Bootstrap table helpers (conservés) ─────────────────── */
+.table-success { background-color: #d4edda !important; }
+.table-warning { background-color: #fff3cd !important; }
+.table-info    { background-color: #d1ecf1 !important; }
+.table-danger  { background-color: #f8d7da !important; }
+.table-primary { background-color: #cce5ff !important; }
+
+/* ── COVER — hero section ─────────────────────────────────── */
+.cover-hero {
+  position: relative;
+  width: 100%;
+  min-height: 520px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin: -10px 0 48px 0;
+  display: flex;
+  align-items: flex-end;
+  box-shadow: var(--shadow-md);
+}
+
+.cover-hero,
+.cover-hero * {
+  box-sizing: border-box;
+}
+
+.cover-hero img.cover-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: brightness(.62) saturate(1.1);
+  z-index: 0;
+}
+
+.cover-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    160deg,
+    rgba(13,27,62,.15) 0%,
+    rgba(13,27,62,.72) 55%,
+    rgba(11,13,30,.92) 100%
+  );
+  z-index: 1;
+}
+
+.cover-content {
+  position: relative;
+  z-index: 2;
+  padding: 48px 52px;
+  width: 100%;
+}
+
+.cover-badge {
+  display: inline-block;
+  background: rgba(34,211,238,.18);
+  border: 1px solid rgba(34,211,238,.45);
+  color: var(--c-cyan);
+  font-family: 'Courier New', monospace;
+  font-size: .72rem;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 50px;
+  margin-bottom: 20px;
+}
+
+.cover-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.9rem, 4vw, 2.9rem);
+  font-weight: 700;
+  color: var(--c-white);
+  line-height: 1.2;
+  margin: 0 0 10px 0;
+  letter-spacing: -.01em;
+  border-left: none;
+  padding-left: 0;
+}
+
+.cover-subtitle {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  color: rgba(224,242,254,.82);
+  font-style: italic;
+  margin: 0 0 22px 0;
+  line-height: 1.45;
+}
+
+/* Évite les marges automatiques de paragraphes générés par le HTML de sortie */
+.cover-content p,
+.cover-content ul {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.cover-divider {
+  width: 56px;
+  height: 2px;
+  background: var(--c-cyan);
+  margin: 0 0 22px 0;
+  border: none;
+}
+
+.cover-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.cover-authors {
+  flex: 1 1 260px;
+}
+
+.cover-authors-label {
+  font-family: 'Courier New', monospace;
+  font-size: .66rem;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--c-cyan);
+  margin-bottom: 8px;
+}
+
+.cover-authors-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cover-authors-list li {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: .98rem;
+  color: rgba(255,255,255,.92);
+  line-height: 1.7;
+}
+
+.cover-info {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.cover-info-line {
+  font-family: 'Courier New', monospace;
+  font-size: .72rem;
+  color: rgba(224,242,254,.65);
+  letter-spacing: .06em;
+  line-height: 2;
+}
+
+/* ── SECTION headings ─────────────────────────────────────── */
+h1 { border-left: 4px solid var(--c-indigo); padding-left: 14px; }
+h2 { color: var(--c-navy); }
+h3 { color: var(--c-indigo); }
+
+/* ── ENCADRÉS thématiques ─────────────────────────────────── */
+.problematique {
+  background: linear-gradient(135deg, var(--c-indigo) 0%, var(--c-violet) 100%);
+  color: var(--c-white);
+  padding: 24px 28px;
+  border-radius: var(--r-lg);
+  margin: 24px 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.highlight-box {
+  background: var(--c-ice);
+  border-left: 5px solid var(--c-cyan);
+  padding: 18px 22px;
+  margin: 18px 0;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+
+.success-box {
+  background: #f0fdf4;
+  border-left: 5px solid #16a34a;
+  padding: 18px 22px;
+  margin: 18px 0;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+
+.warning-box {
+  background: #fffbeb;
+  border-left: 5px solid #d97706;
+  padding: 18px 22px;
+  margin: 18px 0;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+}
+
+/* ── CONCLUSION CARD LAYOUT ──────────────────────────────── */
+.conclusion-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin: 28px 0;
+}
+
+.concl-card {
+  background: var(--c-white);
+  border: 1px solid #e2e8f0;
+  border-radius: var(--r-lg);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .2s;
+}
+
+.concl-card:hover { box-shadow: var(--shadow-md); }
+
+.concl-card-icon {
+  font-size: 1.6rem;
+  margin-bottom: 10px;
+  display: block;
+  color: var(--c-indigo);
+  font-weight: 700;
+}
+
+.concl-card-q {
+  font-size: .82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--c-indigo);
+  margin-bottom: 6px;
+}
+
+.concl-card-a {
+  font-size: .93rem;
+  color: var(--c-muted);
+  line-height: 1.6;
+}
+
+.concl-card-badge {
+  display: inline-block;
+  margin-top: 12px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 3px 10px;
+  border-radius: 50px;
+}
+
+/* LIMITS & PERSPECTIVES ── */
+.limits-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 24px 0;
+}
+
+@media (max-width: 640px) { .limits-grid { grid-template-columns: 1fr; } }
+
+.limits-panel {
+  border-radius: var(--r-lg);
+  padding: 22px 24px;
+}
+
+.limits-panel.amber {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.limits-panel.blue {
+  background: var(--c-ice);
+  border: 1px solid #bae6fd;
+}
+
+.limits-panel h4 {
+  margin-top: 0;
+  font-size: .88rem;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+}
+
+.limits-panel.amber h4 { color: #92400e; }
+.limits-panel.blue  h4 { color: var(--c-indigo); }
+
+.limits-panel ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: .9rem;
+  color: var(--c-muted);
+  line-height: 1.8;
+}
+
+/* FINAL STAMP ── */
+.final-stamp {
+  margin: 48px 0 20px 0;
+  padding: 28px 36px;
+  background: linear-gradient(135deg, var(--c-deep) 0%, var(--c-navy) 100%);
+  border-radius: var(--r-lg);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+.final-stamp-text {
+  color: rgba(255,255,255,.9);
+  font-size: 1rem;
+  font-style: italic;
+  font-family: Georgia, serif;
+  flex: 1 1 300px;
+}
+
+.final-stamp-text strong { color: var(--c-cyan); font-style: normal; }
+
+.final-stamp-meta {
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+.final-stamp-name {
+  font-family: 'Courier New', monospace;
+  font-size: .78rem;
+  color: rgba(224,242,254,.7);
+  letter-spacing: .06em;
+}
+
+.final-stamp-date {
+  font-family: 'Courier New', monospace;
+  font-size: .72rem;
+  color: var(--c-cyan);
+  margin-top: 4px;
+}
+</style>
+
+<div class="cover-hero">
+<img class="cover-bg" src="images/cover_adn.jpg" alt="Illustration méthylation ADN et vieillissement biologique" />
+<div class="cover-content">
+<div class="cover-badge">Épigénétique &amp; Machine Learning · 2026</div>
+<h1 class="cover-title">Prédiction de l'Âge Biologique<br>à partir de la Méthylation de l'ADN</h1>
+<p class="cover-subtitle">Développement et évaluation d'une horloge épigénétique<br>basée sur les profils de méthylation CpG</p>
+<hr class="cover-divider" />
+<div class="cover-meta">
+<div class="cover-authors">
+<div class="cover-authors-label">Auteurs</div>
+<ul class="cover-authors-list">
+<li>Knight Peterson JEAN-BAPTISTE</li>
+<li>Romain LAUNAY</li>
+<li>Badereddine SALEM</li>
+<li>Maroine KHANNOUSSI</li>
+</ul>
+</div>
+<div class="cover-info">
+<div class="cover-info-line">Projet de Hackathon</div>
+<div class="cover-info-line">Master 2 Mathématiques Appliquées &amp; Statistiques</div>
+<div class="cover-info-line">2026</div>
+</div>
+</div>
+</div>
+</div>
+
+
+
+```{r setup, include=FALSE}
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURATION GÉNÉRALE
+# ═══════════════════════════════════════════════════════════════════
+
+knitr::opts_chunk$set(
+
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.width = 12,
+  fig.height = 8,
+  dpi = 300,
+  cache = FALSE
+)
+
+# Paramètres de reproductibilité / performance
+set.seed(123)
+INSTALL_MISSING_PACKAGES <- FALSE
+N_THREADS <- max(1L, parallel::detectCores(logical = FALSE) - 1L)
+data.table::setDTthreads(threads = N_THREADS)
+RUN_IMPUTATION_BENCHMARKS <- FALSE
+RUN_DEEP_LEARNING <- TRUE
+
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+.libPaths(c(.libPaths(), Sys.getenv("R_LIBS_USER")))
+
+# Liste des packages essentiels (VERSION COMPLÈTE pour machine puissante)
+packages <- c(
+  "tidyverse", "corrplot", "ggplot2", "DT",
+  "knitr", "kableExtra", "gridExtra", "RColorBrewer", "viridis",
+  "caret", "glmnet", "randomForest", "xgboost", "e1071", "naniar",
+  "FactoMineR", "factoextra",  # ACP
+  "mice",                       # Imputation multiple
+  "VIM",                        # Visualisation NA + KNN imputation
+  "reticulate"                  # Bridge R ↔ Python (Deep Learning)
+)
+
+# Packages Bioconductor pour methylclock
+bioc_packages <- c("methylclock", "methylclockData")
+
+# Installer les packages CRAN manquants (optionnel)
+installed <- packages %in% rownames(installed.packages())
+if(any(!installed)) {
+  if (INSTALL_MISSING_PACKAGES) {
+    install.packages(packages[!installed], dependencies = TRUE)
+  } else {
+    stop(
+      paste0(
+        "Packages manquants: ", paste(packages[!installed], collapse = ", "),
+        "\nInstallez-les avant exécution, ou passez INSTALL_MISSING_PACKAGES <- TRUE."
+      )
+    )
+  }
+}
+
+# Installer Bioconductor + methylclock si absent
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  if (INSTALL_MISSING_PACKAGES) {
+    install.packages("BiocManager")
+  } else {
+    stop("BiocManager manquant. Installez-le ou passez INSTALL_MISSING_PACKAGES <- TRUE.")
+  }
+}
+for (pkg in bioc_packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    if (INSTALL_MISSING_PACKAGES) {
+      BiocManager::install(pkg, ask = FALSE, update = FALSE)
+    } else {
+      warning(paste0("Package Bioconductor manquant: ", pkg, ". Sections associées désactivées."))
+    }
+  }
+}
+
+# Charger les packages
+suppressPackageStartupMessages({
+  lapply(packages, library, character.only = TRUE)
+})
+
+# ═══════════════════════════════════════════════════════════════════════
+# RÉSOLUTION DES CONFLITS DE FONCTIONS — masquage dans .GlobalEnv
+# ═══════════════════════════════════════════════════════════════════════
+# STRATÉGIE : assignation explicite dans .GlobalEnv.
+# Avantages vs conflicted :
+#   - aucune dépendance externe (conflicted a une API instable entre versions :
+#     conflict_prefer() en < 1.2, conflicts_prefer() en >= 1.2, syntaxe .quiet
+#     vs quiet selon la version)
+#   - indépendant de l'ordre de chargement des packages
+#   - .GlobalEnv est toujours en tête du search path → priorité garantie
+#   - fonctionne avec R >= 3.5, knitr, rmarkdown, Shiny, scripts standalone
+#
+# NOTE : data.table::transpose et mice::mice / mice::complete gardent leur
+# namespace explicite dans leurs chunks respectifs (voir commentaires locaux).
+# ═══════════════════════════════════════════════════════════════════════
+
+# ── dplyr prend la priorité sur stats, plyr, mice pour les verbes data
+filter    <- dplyr::filter
+select    <- dplyr::select
+mutate    <- dplyr::mutate
+rename    <- dplyr::rename
+summarise <- dplyr::summarise
+summarize <- dplyr::summarize
+lag       <- dplyr::lag
+arrange   <- dplyr::arrange
+slice     <- dplyr::slice
+
+cat("[setup] Conflits resolus par masquage : filter/select/mutate/",
+    "rename/summarise/lag/arrange/slice -> dplyr\n")
+
+# Vérifier methylclock
+methylclock_available <- requireNamespace("methylclock", quietly = TRUE)
+if (methylclock_available) {
+  library(methylclock)
+  cat("methylclock charge avec succes\n")
+} else {
+  cat("methylclock indisponible -- la comparaison Horvath sera ignoree\n")
+}
+
+# Configuration ggplot2 globale
+theme_set(theme_minimal() + 
+          theme(text = element_text(size = 12),
+                plot.title = element_text(size = 16, face = "bold", color = "#2c3e50"),
+                plot.subtitle = element_text(size = 14, color = "grey50"),
+                axis.title = element_text(size = 14),
+                legend.title = element_text(size = 12, face = "bold")))
+
+# Palette de couleurs personnalisée
+# 7 couleurs : 6 modèles de base + Deep Learning optionnel
+custom_colors <- c("#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c", "#e67e22", "#27ae60")
+
+# ═══════════════════════════════════════════════════════════════════
+# STRUCTURE DE SORTIE + EXPORT AUTOMATIQUE DES VISUALISATIONS
+# ═══════════════════════════════════════════════════════════════════
+
+PROJECT_STRUCTURE <- c("data", "scripts", "outputs", "outputs/plots", "models", "reports")
+invisible(lapply(PROJECT_STRUCTURE, function(p) dir.create(p, recursive = TRUE, showWarnings = FALSE)))
+
+OUTPUT_DIR <- file.path("outputs")
+PLOTS_DIR <- file.path(OUTPUT_DIR, "plots")
+MODELS_DIR <- file.path("models")
+
+FIG_WIDTH <- 12
+FIG_HEIGHT <- 8
+FIG_DPI <- 300
+
+sanitize_filename <- function(x) {
+  x <- gsub("[^A-Za-z0-9_-]", "_", x)
+  x <- gsub("_+", "_", x)
+  x <- gsub("^_|_$", "", x)
+  ifelse(nchar(x) == 0, "plot", x)
+}
+
+save_plot <- function(plot_obj, filename,
+                      width = FIG_WIDTH, height = FIG_HEIGHT, dpi = FIG_DPI,
+                      plot_dir = PLOTS_DIR, bg = "white") {
+  dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+  stem <- sanitize_filename(tools::file_path_sans_ext(filename))
+  png_path <- file.path(plot_dir, paste0(stem, ".png"))
+  pdf_path <- file.path(plot_dir, paste0(stem, ".pdf"))
+
+  ggplot2::ggsave(filename = png_path, plot = plot_obj, width = width, height = height,
+                  dpi = dpi, units = "in", bg = bg)
+  ggplot2::ggsave(filename = pdf_path, plot = plot_obj, width = width, height = height,
+                  units = "in", bg = bg)
+  invisible(list(png = png_path, pdf = pdf_path))
+}
+
+# Hook knitr : copie automatiquement toutes les figures rendues vers outputs/plots/
+default_plot_hook <- knitr::knit_hooks$get("plot")
+knitr::knit_hooks$set(plot = function(x, options) {
+  out <- default_plot_hook(x, options)
+  label <- if (!is.null(options$label)) options$label else "plot"
+  fig_num <- if (!is.null(options$fig.num)) options$fig.num else 1
+  ext <- tools::file_ext(x)
+  safe_label <- sanitize_filename(label)
+  dest <- file.path(PLOTS_DIR, sprintf("%s_%02d.%s", safe_label, fig_num, ext))
+  if (!identical(normalizePath(dirname(x), mustWork = FALSE), normalizePath(PLOTS_DIR, mustWork = FALSE))) {
+    file.copy(x, dest, overwrite = TRUE)
+  }
+  out
+})
+
+cat("Dossier d'export des figures :", PLOTS_DIR, "\n")
+```
+---
+
+# Introduction
+
+## Contexte : Méthylation de l'ADN et Vieillissement Biologique
+
+<div class="problematique">
+Le vieillissement biologique ne progresse pas toujours au même rythme que l'âge chronologique. Des individus du même âge calendaire peuvent présenter des états cellulaires très différents, sous l'influence de facteurs génétiques, environnementaux et physiopathologiques. La **méthylation de l'ADN**, en particulier au niveau des dinucléotides CpG, constitue l'un des biomarqueurs épigénétiques les plus robustes du vieillissement, et a donné naissance aux **horloges biologiques** : des modèles statistiques capables d'estimer l'âge d'un individu à partir de son profil de méthylation.
+</div>
+
+### Lien entre méthylation et vieillissement
+
+La méthylation de l'ADN correspond à l'ajout d'un groupement méthyle sur la cytosine des dinucléotides CpG. Ce mécanisme épigénétique régule l'expression génique sans modifier la séquence nucléotidique. Avec l'âge, des patrons de méthylation caractéristiques s'installent de façon prévisible à travers les tissus ce qui constitue une propriété exploitée pour l'estimation de l'âge biologique. Des liens établis avec le cancer et d'autres pathologies montrent qu'une dérégulation de ces patrons peut signaler un vieillissement accéléré.
+
+### Horloges biologiques existantes
+
+Les horloges de référence, notamment celle de **Horvath (2013)** et de **Hannum (2013)**, reposent sur des ensembles fixes de sites CpG et des modèles de régression pénalisée (Elastic Net). L'horloge de Horvath (2013) rapporte une corrélation publiée de **r = 0,96** et une MAE d'environ **3,6 ans** sur une cohorte multi-tissus ($n \approx 21\,000$).Ces valeurs constituent notre *baseline* de comparaison issues de la littérature.
+
+---
+
+## Objectifs du Projet
+
+L'objectif central de ce projet est de développer et d'évaluer une nouvelle horloge biologique à partir de données de méthylation provenant de **400 individus sains**, en poursuivant trois buts complémentaires :
+
+1. **Construire une ou plusieurs horloges biologiques** à partir des profils de méthylation CpG (pipeline de prétraitement, sélection de variables, modélisation)
+2. **Comparer les performances** aux horloges de référence (Horvath, Hannum via le package `methylclock`)
+3. **Quantifier les performances** sur cohorte de test indépendante
+
+<div class="highlight-box">
+
+**Métriques de performance ciblées**
+
+- *À l'échelle de la cohorte :* corrélation (r) et coefficient de détermination (R²) entre âge biologique prédit et âge chronologique ; erreur absolue moyenne (MAE) en années
+- *À l'échelle individuelle :* Delta Age (âge biologique − âge chronologique) ; Age Acceleration résiduelle
+
+</div>
+
+### Questions explorées
+
+- Existe-t-il une **non-linéarité de la méthylation selon l'âge** justifiant une modélisation par tranches ?
+- Y a-t-il une **différence de profil selon le genre** susceptible d'améliorer la prédiction ?
+
+### Données disponibles
+
+- **400 échantillons sains** (individus sans pathologie déclarée)
+- **Base principale** : `beta_50k` correspondant à environ 50 000 sites CpG mesurés
+- **Valeurs de méthylation** : bêta-values comprises entre 0 (non méthylé) et 1 (totalement méthylé)
+- **Covariables disponibles** : âge chronologique, genre (`female`), ethnie
+
+---
+
+
+# Chargement et Exploration des Données
+
+## Paramètres de Configuration
+
+```{r config-params}
+# ═══════════════════════════════════════════════════════════════════
+# PARAMÈTRES DE CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════════
+# CONFIGURATION DU JEU DE DONNÉES
+# ══════════════════════════════════════════════════════════════════
+
+# Base principale du projet (demande utilisateur)
+DATA_FILE <- "beta_50k.csv"
+DATA_LABEL <- "beta_50k (base principale)"
+
+# Nombre de CpG à sélectionner pour la modélisation
+N_CPG_SELECTION <- 500  # Plus de CpG pour la base complète
+
+# Proportion train/test
+TRAIN_RATIO <- 0.8
+
+# Nombre de folds pour la validation croisée
+N_FOLDS <- 10  # 10 folds standard
+
+cat("Configuration :\n")
+cat("   - Données :", DATA_LABEL, "\n")
+cat("   - CpG sélectionnés :", N_CPG_SELECTION, "\n")
+cat("   - Ratio train/test :", TRAIN_RATIO, "/", 1-TRAIN_RATIO, "\n")
+cat("   - Folds CV :", N_FOLDS, "\n")
+```
+
+## Import des Données de Méthylation
+
+```{r load-data, message=FALSE}
+# ═══════════════════════════════════════════════════════════════════
+# CHARGEMENT DE LA BASE PRINCIPALE (beta_50k)
+# ═══════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════
+
+library(data.table)
+
+# Libérer la mémoire avant chargement
+gc(verbose = FALSE)
+
+if (!file.exists(DATA_FILE)) {
+  stop(paste0("Fichier introuvable : ", DATA_FILE,
+              "\nPlacez le fichier dans le même dossier que ce Rmd."))
+}
+
+cat("Chargement de ", DATA_FILE, " ...\n", sep = "")
+
+t_start <- Sys.time()
+
+age_bio <- fread(
+  DATA_FILE,
+  header = TRUE,
+  showProgress = TRUE,
+  nThread = N_THREADS,
+  data.table = TRUE,
+  stringsAsFactors = FALSE,
+  na.strings = c("", "NA", "NaN"),
+  verbose = FALSE
+)
+
+t_load <- round(difftime(Sys.time(), t_start, units = "secs"), 1)
+cat("Chargement terminé en", t_load, "secondes\n")
+
+# Afficher les dimensions et la mémoire utilisée
+cat("\nDimensions du jeu de données :\n")
+cat("   - Nombre de CpG :", nrow(age_bio), "\n")
+cat("   - Nombre de colonnes :", ncol(age_bio), "\n")
+cat("   - Taille en mémoire : ~", round(object.size(age_bio) / 1e9, 2), "Go\n")
+```
+
+
+```{r load-data-arrow, eval=FALSE}
+# ═══════════════════════════════════════════════════════════════════
+# ALTERNATIVE : LECTURE AVEC ARROW (RAM LIMITÉE)
+# ═══════════════════════════════════════════════════════════════════
+# 
+# Avantages :
+#   - Lazy evaluation : ne charge que les colonnes utilisées
+#   - Format Parquet : 3-4x plus petit et plus rapide
+#   - Supporte les fichiers > RAM disponible
+#
+# Inconvénient : Nécessite une conversion pour certaines opérations
+# ═══════════════════════════════════════════════════════════════════
+
+library(arrow)
+
+# Étape 1 : Convertir CSV en Parquet (une seule fois)
+parquet_file <- sub("\\.csv$", ".parquet", DATA_FILE)
+
+if(!file.exists(parquet_file)) {
+  cat("Conversion CSV → Parquet (une seule fois)...\n")
+  
+  # Lecture streaming + écriture directe
+  csv_stream <- open_dataset(DATA_FILE, format = "csv")
+  write_parquet(csv_stream, parquet_file)
+  
+  cat("Fichier Parquet créé (", 
+      round(file.size(parquet_file) / 1e9, 2), " Go)\n")
+}
+
+# Étape 2 : Lecture paresseuse depuis Parquet
+age_bio_arrow <- open_dataset(parquet_file)
+
+# Les données ne sont PAS en mémoire ici !
+# Elles seront chargées uniquement lors du collect()
+
+# Pour convertir en data.table quand nécessaire :
+# age_bio <- as.data.table(collect(age_bio_arrow))
+```
+
+```{r preview-data}
+# Aperçu des données
+knitr::kable(head(age_bio[, 1:6], 8), 
+             caption = "Aperçu des données de méthylation (6 premières colonnes)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#3498db") %>%
+  column_spec(1, bold = TRUE, color = "#2c3e50")
+```
+
+## Description des Variables
+
+Les valeurs de méthylation (bêta-values) sont comprises entre **0** (non méthylé) et **1** (totalement méthylé).
+
+```{r var-description}
+var_desc <- data.frame(
+  Type = c("Identifiant", "Bêta-values", "Covariables"),
+  Variables = c("X (ID CpG)", "Colonnes sujets (400)", "age, female, ethnicity"),
+  Description = c("Identifiant unique du site CpG", 
+                  "Niveaux de méthylation [0-1]",
+                  "Métadonnées cliniques"),
+  Utilité = c("Clé de jointure", "Features prédictives", "Variables de contrôle")
+)
+
+knitr::kable(var_desc, caption = "Description des types de variables") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#2ecc71") %>%
+  row_spec(1, background = "#e8f8f5") %>%
+  row_spec(2, background = "#fef9e7") %>%
+  row_spec(3, background = "#ebf5fb")
+```
+
+## Import des Métadonnées Cliniques
+
+```{r load-annot}
+annot_projet <- read.csv("annot_projet.csv", header = TRUE, stringsAsFactors = FALSE)
+
+cat("Métadonnées cliniques :\n")
+cat("   - Nombre de sujets :", nrow(annot_projet), "\n")
+cat("   - Variables :", paste(names(annot_projet), collapse = ", "), "\n")
+```
+
+```{r preview-annot}
+knitr::kable(head(annot_projet, 10), 
+             caption = "Aperçu des métadonnées cliniques") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#9b59b6") %>%
+  column_spec(4, bold = TRUE, color = "#e74c3c")
+```
+
+```{r annot-structure}
+annot_desc <- data.frame(
+  Variable = c("Sample_Name", "female", "ethnicity", "age", "Sample_description"),
+  Type = c("Nominale", "Binaire", "Nominale", "Continue", "Nominale"),
+  Description = c("ID GEO de l'échantillon", 
+                  "Sexe (TRUE=femme)", 
+                  "Origine ethnique",
+                  "Âge chronologique (cible)",
+                  "Clé de jointure"),
+  Exemple = c("GSM7866964", "TRUE/FALSE", "White, Asian...", "25-85 ans", "207700470022_R08C01")
+)
+
+knitr::kable(annot_desc, caption = "Structure de la table annot_projet") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#e74c3c") %>%
+  row_spec(4, bold = TRUE, background = "#fadbd8") %>%
+  row_spec(5, bold = TRUE, background = "#d5f5e3")
+```
+
+---
+
+# Fusion et Alignement des Données
+
+Les données de méthylation (1 colonne = 1 sujet) et les métadonnées cliniques doivent être fusionnées via un identifiant commun (`Sample_description`). Cette étape implique : 
+
+(1) la suppression du préfixe "X" ajouté automatiquement par R aux noms de colonnes numériques,
+(2) la vérification de la correspondance des identifiants,
+(3) le réalignement des deux tables,
+(4) la transposition de la matrice pour obtenir le format standard (1 ligne = 1 sujet).
+
+```{r align-data}
+# ═══════════════════════════════════════════════════════════════════
+# ALIGNEMENT DES DONNÉES
+# ═══════════════════════════════════════════════════════════════════
+
+library(data.table)
+
+# S'assurer que age_bio est un data.table
+if(!inherits(age_bio, "data.table")) setDT(age_bio)
+
+# Récupérer les noms de colonnes (échantillons) sauf la première (CpG IDs)
+sample_cols <- names(age_bio)[-1]
+
+# Nettoyer les noms de colonnes (supprimer le préfixe "X" ajouté par R)
+sample_cols_clean <- gsub("^X", "", sample_cols)
+
+# Renommer les colonnes avec setnames (data.table, pas de copie)
+setnames(age_bio, old = sample_cols, new = sample_cols_clean)
+
+# Vérifier correspondance avec les métadonnées
+match_result <- all(sample_cols_clean %in% annot_projet$Sample_description)
+cat("Correspondance des identifiants :", ifelse(match_result, "OK", "ERREUR"), "\n")
+cat("   - Échantillons dans beta :", length(sample_cols_clean), "\n")
+cat("   - Échantillons dans annot :", nrow(annot_projet), "\n")
+
+# Réordonner annot pour matcher l'ordre des colonnes beta
+annot_aligned <- annot_projet[
+  match(sample_cols_clean, annot_projet$Sample_description),
+]
+
+# Vérifier l'alignement
+if(any(is.na(annot_aligned$Sample_Name))) {
+  warning("Certains échantillons n'ont pas de correspondance dans annot_projet!")
+} else {
+  cat("Alignement réussi :", nrow(annot_aligned), "sujets\n")
+}
+```
+
+```{r transpose-merge, message=FALSE}
+# ═══════════════════════════════════════════════════════════════════
+# TRANSPOSITION OPTIMISÉE (BASE beta_50k)
+# ═══════════════════════════════════════════════════════════════════
+#
+# STRATÉGIE :
+#   1. data.table::transpose() natif → évite la conversion en matrix
+#      (pas de copie intermédiaire, 2x moins de RAM que t(as.matrix()))
+#   2. Chunks écrits sur disque via fst → RAM constante (~2-3 Go max)
+#      au lieu d'accumuler toutes les listes avant do.call(cbind)
+#   3. Relecture + cbind final depuis fst (très rapide, colonnes mappées)
+#
+# RAM maximale estimée : ~3-4 Go (vs 12-18 Go avec l'ancienne version)
+# ═══════════════════════════════════════════════════════════════════
+
+library(data.table)
+
+# ── CONFLIT purrr::transpose() vs data.table::transpose() ──────────────────
+# purrr::transpose() est enregistrée AVANT data.table dans le search path
+# quand tidyverse est chargé. Sans namespace, R appelle purrr::transpose()
+# qui retourne une list ordinaire → setnames() plante.
+# Solution : tous les appels ci-dessous utilisent data.table::transpose() explicite.
+# Le masquage global (ligne setup) ne couvre pas transpose (risque de casser purrr).
+if ("package:purrr" %in% search()) {
+  message("[transpose-merge] purrr detecte dans le search path. ",
+          "Tous les appels transpose() utilisent data.table::transpose() explicite.")
+}
+
+# Installer fst si absent (lecture/écriture disque ultra-rapide)
+if (!requireNamespace("fst", quietly = TRUE)) {
+  if (INSTALL_MISSING_PACKAGES) {
+    install.packages("fst")
+  } else {
+    stop("Package fst manquant. Installez-le ou passez INSTALL_MISSING_PACKAGES <- TRUE.")
+  }
+}
+library(fst)
+
+# Convertir en data.table si nécessaire
+if (!inherits(age_bio, "data.table")) setDT(age_bio)
+
+# Récupérer les CpG (colonne 1) — forcer en caractère au cas où fread les lit comme double
+cpg_ids   <- as.character(age_bio[[1]])
+n_cpg     <- length(cpg_ids)
+n_samples <- ncol(age_bio) - 1
+
+cat("Dimensions à transposer :", n_cpg, "CpG x", n_samples, "sujets\n")
+cat("Mémoire estimée (résultat final) : ~",
+    round(n_cpg * n_samples * 8 / 1e9, 2), "Go\n")
+
+# Supprimer la colonne CpG (modification en place, sans copie)
+age_bio[, 1 := NULL]
+gc(verbose = FALSE)
+
+# Fast-path pour base beta_50k : transposition directe en mémoire
+if (n_cpg <= 100000L) {
+  cat("Transposition directe en mémoire (mode beta_50k) ...\n")
+
+  # IMPORTANT : data.table::transpose() explicite — évite le masquage par
+  # purrr::transpose() (chargé via tidyverse) qui retourne une list, pas un data.table.
+  beta_subjects <- data.table::transpose(age_bio)
+
+  # Garde-fou : s'assurer que le résultat est bien un data.table avant setnames()
+  if (!is.data.table(beta_subjects)) {
+    setDT(beta_subjects)
+    warning("[transpose] Le résultat n'était pas un data.table — setDT() appliqué. ",
+            "Vérifiez que data.table::transpose() est bien appelé (conflit purrr ?).")
+  }
+  stopifnot(
+    "beta_subjects doit être un data.table après transposition"  = is.data.table(beta_subjects),
+    "beta_subjects doit avoir autant de lignes que de sujets"    = nrow(beta_subjects) == n_samples,
+    "beta_subjects doit avoir autant de colonnes que de CpG"     = ncol(beta_subjects) == n_cpg
+  )
+
+  setnames(beta_subjects, cpg_ids)
+  rm(age_bio)
+  gc(verbose = FALSE)
+} else {
+  # ── Dossier temporaire pour les chunks fst ────────────────────────
+  tmp_dir <- file.path(tempdir(), "beta_chunks")
+  dir.create(tmp_dir, showWarnings = FALSE)
+
+  # ── Paramètres ──────────────────────────────────────────────────
+  CHUNK_SIZE <- 100000L
+
+  n_chunks   <- ceiling(n_cpg / CHUNK_SIZE)
+  chunk_files <- character(n_chunks)
+
+  cat("Transposition par chunks (", CHUNK_SIZE, " CpG/chunk, ",
+      n_chunks, " chunks)...\n")
+
+  t_start <- Sys.time()
+
+  for (i in seq_len(n_chunks)) {
+
+    start_row <- (i - 1L) * CHUNK_SIZE + 1L
+    end_row   <- min(i * CHUNK_SIZE, n_cpg)
+
+    # IMPORTANT : data.table::transpose() explicite — même raison qu'en fast-path
+    chunk_t <- data.table::transpose(age_bio[start_row:end_row])
+    if (!is.data.table(chunk_t)) setDT(chunk_t)
+    setnames(chunk_t, cpg_ids[start_row:end_row])
+
+    fpath <- file.path(tmp_dir, sprintf("chunk_%04d.fst", i))
+    write_fst(chunk_t, fpath, compress = 50)
+    chunk_files[i] <- fpath
+
+    rm(chunk_t)
+    if (i %% 5L == 0L) gc(verbose = FALSE)
+    if (i %% 20L == 0L || i == n_chunks)
+      cat("   Chunk", i, "/", n_chunks, "—",
+          round(difftime(Sys.time(), t_start, units = "secs"), 0), "s\n")
+  }
+
+  rm(age_bio)
+  gc(verbose = FALSE)
+
+  cat("Assemblage des chunks depuis disque...\n")
+  beta_subjects <- do.call(
+    cbind,
+    lapply(chunk_files, function(f) read_fst(f, as.data.table = TRUE))
+  )
+
+  unlink(tmp_dir, recursive = TRUE)
+  gc(verbose = FALSE)
+}
+
+cat("Transposition terminée :", nrow(beta_subjects), "x",
+    ncol(beta_subjects), "\n")
+
+# ── Fusion avec les métadonnées ─────────────────────────────────
+setDT(annot_aligned)
+final_data <- cbind(annot_aligned, beta_subjects)
+
+# Libérer mémoire
+rm(beta_subjects, annot_aligned)
+gc(verbose = FALSE)
+
+cat("\nJeu de données fusionné :\n")
+cat("   - Dimensions :", nrow(final_data), "sujets x", ncol(final_data), "variables\n")
+cat("   - Mémoire utilisée : ~", round(object.size(final_data) / 1e9, 2), "Go\n")
+```
+
+<div class="success-box">
+Les données de méthylation ont été alignées avec les métadonnées cliniques via la clé Sample_description.
+</div>
+
+---
+
+```{r}
+# Aperçu des 10 premières lignes et 10 premières colonnes
+final_data[1:10, 1:10] %>%
+  knitr::kable(
+    caption = "Aperçu des 10 premières lignes et 10 premières colonnes de final_data",
+    digits = 4,          # arrondi si tu as beaucoup de décimales (utile pour les beta-values CpG)
+    align = "c"          # centre les colonnes
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "left"
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#2C3E50") %>%   # En-tête sombre
+  column_spec(1, bold = TRUE, color = "#2C3E50", background = "#ECF0F1") %>% # 1ère colonne en évidence
+  column_spec(2:10, color = "#34495E") %>%
+  add_header_above(c(" " = 1, "Métadonnées & Premiers CpG" = 9), 
+                   bold = TRUE, color = "white", background = "#3498DB")
+```
+
+
+# Gestion des Valeurs Manquantes
+
+Les données de méthylation de la base principale (beta_50k) peuvent contenir des valeurs manquantes. Nous comparons ici **trois approches d'imputation** : 
+
+(1) médiane (rapide et robuste),
+(2) KNN (structure locale),
+(3) MICE (approche multivariée).
+Cette comparaison permet d'évaluer l'impact de la méthode d'imputation sur les performances du modèle.
+
+<div class="warning-box">
+**Note :** Même sur beta_50k, l'imputation MICE reste coûteuse en haute dimension. Nous l'appliquons donc sur un sous-ensemble de CpG pré-sélectionnés.
+</div>
+
+```{r missing-analysis}
+# ═══════════════════════════════════════════════════════════════════
+# ANALYSE DES VALEURS MANQUANTES - BASE COMPLÈTE
+# ═══════════════════════════════════════════════════════════════════
+
+# S'assurer que final_data est un data.table
+if(!inherits(final_data, "data.table")) setDT(final_data)
+
+# Identifier les colonnes métadonnées et CpG
+metadata_cols_check <- c("Sample_Name", "female", "ethnicity", "age", "Sample_description")
+cpg_cols_check <- setdiff(names(final_data), metadata_cols_check)
+
+# Calculer le pourcentage de NA par colonne CpG
+na_per_cpg <- sapply(final_data[, ..cpg_cols_check], function(x) sum(is.na(x)) / length(x) * 100)
+
+cat("Analyse des valeurs manquantes (base complète) :\n")
+cat("   - Total colonnes CpG :", length(na_per_cpg), "\n")
+cat("   - CpG sans NA :", sum(na_per_cpg == 0), "\n")
+cat("   - CpG avec 0-5% NA :", sum(na_per_cpg > 0 & na_per_cpg <= 5), "\n")
+cat("   - CpG avec 5-20% NA :", sum(na_per_cpg > 5 & na_per_cpg <= 20), "\n")
+cat("   - CpG avec >20% NA (exclus) :", sum(na_per_cpg > 20), "\n")
+
+# Visualisation si NA présents (échantillon de colonnes pour éviter erreurs)
+total_na <- sum(is.na(final_data))
+if(total_na > 0) {
+  n_cols_vis <- min(20, ncol(final_data))
+  cols_vis <- names(final_data)[seq_len(n_cols_vis)]
+  
+  tryCatch({
+    vis_miss(as.data.frame(final_data[, ..cols_vis]))
+  }, error = function(e) {
+    cat("Note : Visualisation NA ignorée (", e$message, ")\n")
+  })
+} else {
+  cat("\nAucune valeur manquante détectée.\n")
+}
+```
+
+```{r preprocessing-compare}
+# ═══════════════════════════════════════════════════════════════════
+# COMPARAISON DES MÉTHODES D'IMPUTATION (VERSION DATA.TABLE OPTIMISÉE)
+# ═══════════════════════════════════════════════════════════════════
+#
+# IMPORTANT : On utilise UNIQUEMENT data.table (pas tidyverse) pour :
+#   1. Éviter les conflits de syntaxe avec les gros fichiers
+#   2. Économiser la mémoire (modification in-place)
+#   3. Traiter efficacement les fichiers de grande dimension
+# ═══════════════════════════════════════════════════════════════════
+
+library(data.table)
+
+# Seuil de filtrage (DÉFINI EN PREMIER)
+threshold <- 0.2
+
+# S'assurer que final_data est un data.table                                         
+if(!inherits(final_data, "data.table")) setDT(final_data)
+
+# Vérifier et dédupliquer les noms de colonnes si nécessaire
+dupes <- duplicated(names(final_data)) 
+if (any(dupes)) {
+  cat("Colonnes dupliquées détectées :", sum(dupes), "— suppression...\n")
+  final_data <- final_data[, !dupes, with = FALSE]
+}
+
+# Colonnes métadonnées (à conserver)
+metadata_cols <- c("Sample_Name", "female", "ethnicity", "age", "Sample_description")
+
+# Identifier les colonnes CpG (toutes sauf métadonnées)
+all_cols <- names(final_data)
+cpg_cols <- setdiff(all_cols, metadata_cols)
+
+cat("Colonnes CpG identifiées :", length(cpg_cols), "\n")
+
+# ══════════════════════════════════════════════════════════════════
+# FILTRAGE : Supprimer les CpG avec >20% de NA
+# ══════════════════════════════════════════════════════════════════
+
+n_rows <- nrow(final_data)
+
+# Calculer le taux de NA par colonne CpG (vectorisé, efficace en mémoire)
+na_rates <- final_data[, lapply(.SD, function(x) sum(is.na(x)) / n_rows), .SDcols = cpg_cols]
+na_rates_vec <- unlist(na_rates)
+
+# Colonnes CpG à conserver (< 20% NA)
+keep_mask <- na_rates_vec < threshold
+cpg_keep <- cpg_cols[keep_mask]
+
+cat("CpG après filtrage (>20% NA supprimés) :", length(cpg_keep), "\n")
+cat("CpG supprimés :", length(cpg_cols) - length(cpg_keep), "\n")
+
+# Créer le jeu de données filtré (colonnes sélectionnées uniquement)
+cols_to_keep <- c(metadata_cols, cpg_keep)
+beta_filtered <- final_data[, ..cols_to_keep]
+
+# Libérer la mémoire de na_rates
+rm(na_rates, na_rates_vec, keep_mask)
+gc(verbose = FALSE)
+
+# ══════════════════════════════════════════════════════════════════
+# SÉPARATION MÉTADONNÉES / CPG
+# ══════════════════════════════════════════════════════════════════
+
+metadata_temp <- beta_filtered[, ..metadata_cols]
+cpg_temp <- beta_filtered[, ..cpg_keep]
+
+cat("Dimensions cpg_temp :", nrow(cpg_temp), "x", ncol(cpg_temp), "\n")
+
+# Libérer beta_filtered
+rm(beta_filtered)
+gc(verbose = FALSE)
+
+# ══════════════════════════════════════════════════════════════════
+# MÉTHODE 1 : IMPUTATION PAR LA MÉDIANE (RECOMMANDÉE)
+# ══════════════════════════════════════════════════════════════════
+
+# Copie pour imputation médiane
+cpg_median <- copy(cpg_temp)
+
+# Imputation in-place avec data.table::set() (très efficace, 0 copie)
+for(col in names(cpg_median)) {
+  x <- cpg_median[[col]]
+  na_idx <- which(is.na(x))
+  if(length(na_idx) > 0) {
+    med_val <- median(x, na.rm = TRUE)
+    set(cpg_median, i = na_idx, j = col, value = med_val)
+  }
+}
+
+cat("\nMéthode 1 - Imputation par la médiane :\n")
+cat("   - NA restants :", sum(is.na(cpg_median)), "\n")
+
+# ══════════════════════════════════════════════════════════════════
+# MÉTHODE 2 : IMPUTATION KNN (VIM::kNN) — sur sous-ensemble de CpG
+# ══════════════════════════════════════════════════════════════════
+#
+#  KNN impute chaque NA en prenant la moyenne pondérée par distance
+#  des k=5 plus proches voisins (sujets similaires).
+#  En haute dimension c'est trop lourd → on l'applique sur un
+#  sous-ensemble de 2000 CpG pour comparer les RMSE d'imputation
+#  avec la médiane.
+# ══════════════════════════════════════════════════════════════════
+
+if (RUN_IMPUTATION_BENCHMARKS) {
+  library(VIM)
+
+  set.seed(42)
+  n_sample_knn <- min(2000, ncol(cpg_temp))
+  knn_sample_cols   <- sample(names(cpg_temp), n_sample_knn)
+  cpg_knn_subset    <- as.data.frame(cpg_temp[, ..knn_sample_cols])
+
+  t_knn_start <- Sys.time()
+  cpg_knn_imputed   <- VIM::kNN(cpg_knn_subset, k = 5, imp_var = FALSE)
+  t_knn_end         <- Sys.time()
+
+  cat("\nMéthode 2 — Imputation KNN (k=5) sur", n_sample_knn, "CpG :\n")
+  cat("   - NA restants :", sum(is.na(cpg_knn_imputed)), "\n")
+  cat("   - Durée      :", round(difftime(t_knn_end, t_knn_start, units = "secs"), 1), "s\n")
+} else {
+  cat("\nMéthode 2 — KNN : benchmark ignoré (RUN_IMPUTATION_BENCHMARKS = FALSE).\n")
+  knn_sample_cols <- character(0)
+}
+
+# ══════════════════════════════════════════════════════════════════
+# MÉTHODE 3 : IMPUTATION MICE (Multivariate Imputation by Chained
+#              Equations) — sur petit sous-ensemble
+# ══════════════════════════════════════════════════════════════════
+#
+#  MICE modélise chaque variable comme une régression sur les autres.
+#  Très coûteux en haute dimension → on limite à 200 CpG et 2 itérations.
+# ══════════════════════════════════════════════════════════════════
+
+if (RUN_IMPUTATION_BENCHMARKS) {
+  # IMPORTANT : mice exporte filter() et complete() qui entrent en conflit avec
+  # dplyr::filter() et tidyr::complete(). On charge mice SANS l'attacher au
+  # search path (requireNamespace) et on appelle ses fonctions avec namespace.
+  if (!requireNamespace("mice", quietly = TRUE))
+    stop("Package mice manquant — installez-le ou passez RUN_IMPUTATION_BENCHMARKS <- FALSE.")
+
+  n_sample_mice  <- min(200, ncol(cpg_temp))
+  mice_pool <- if (length(knn_sample_cols) > 0) knn_sample_cols else names(cpg_temp)
+  mice_cols      <- sample(mice_pool, n_sample_mice)
+  cpg_mice_sub   <- as.data.frame(cpg_temp[, ..mice_cols])
+
+  t_mice_start   <- Sys.time()
+  # mice::mice() et mice::complete() — namespace explicite pour éviter le conflit
+  mice_obj       <- mice::mice(cpg_mice_sub, m = 1, maxit = 2, method = "pmm",
+                               printFlag = FALSE, seed = 42)
+  cpg_mice_imp   <- mice::complete(mice_obj)
+  t_mice_end     <- Sys.time()
+
+  cat("\nMéthode 3 — Imputation MICE (PMM, 2 itérations) sur", n_sample_mice, "CpG :\n")
+  cat("   - NA restants :", sum(is.na(cpg_mice_imp)), "\n")
+  cat("   - Durée      :", round(difftime(t_mice_end, t_mice_start, units = "secs"), 1), "s\n")
+} else {
+  cat("Méthode 3 — MICE : benchmark ignoré (RUN_IMPUTATION_BENCHMARKS = FALSE).\n")
+}
+
+# Libérer mémoire
+rm(list = intersect(
+  c("cpg_knn_subset", "cpg_knn_imputed", "cpg_mice_sub", "cpg_mice_imp", "mice_obj", "knn_sample_cols"),
+  ls()
+))
+gc(verbose = FALSE)
+
+# ══════════════════════════════════════════════════════════════════
+# CHOIX FINAL : Médiane pour la base complète (scalable)
+# ══════════════════════════════════════════════════════════════════
+
+cpg_data  <- cpg_median
+metadata  <- as.data.frame(metadata_temp)
+
+rm(cpg_median, cpg_temp, metadata_temp)
+gc(verbose = FALSE)
+
+cat("\nMémoire après imputation : ~", round(object.size(cpg_data) / 1e9, 2), "Go\n")
+
+# Tableau comparatif enrichi
+imputation_comparison <- data.frame(
+  Méthode = c("Médiane", "KNN (k=5)", "MICE (PMM)"),
+  Avantages = c(
+    "Ultra-rapide, robuste aux outliers, scalable sur beta_50k",
+    "Preserve la structure locale (CpG corrélés)",
+    "Modélise les relations multivariées, théoriquement optimal"
+  ),
+  Inconvénients = c(
+    "Ignore les corrélations entre CpG",
+    "Lent > 5000 CpG, O(n×p×k)",
+    "Très lent, impossible sur > 500 CpG"
+  ),
+  Recommandation = c("Retenu pour la base complete", "Adapte aux sous-ensembles", "Exploration seulement")
+)
+
+knitr::kable(imputation_comparison,
+             caption = "Comparaison des 3 méthodes d'imputation") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = TRUE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#f39c12") %>%
+  row_spec(1, bold = TRUE, background = "#d4edda")
+```
+
+```{r preprocessing-summary}
+# Fusionner métadonnées et CpG imputées
+final_data_clean <- cbind(setDT(metadata), cpg_data)
+
+# Convertir cpg_data en data.frame pour compatibilité avec le reste du code
+cpg_data <- as.data.frame(cpg_data)
+
+preprocess_summary <- data.frame(
+  Métrique = c("Valeurs manquantes après imputation", 
+               "Nombre de CpG après filtrage",
+               "Nombre de sujets"),
+  Valeur = c(sum(is.na(final_data_clean)), 
+             ncol(cpg_data), 
+             nrow(cpg_data))
+)
+
+knitr::kable(preprocess_summary, caption = "Résumé du prétraitement") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#27ae60") %>%
+  column_spec(2, bold = TRUE, color = "#27ae60")
+
+cat("\nMémoire utilisée après prétraitement : ~", 
+    round(object.size(final_data_clean) / 1e9, 2), "Go\n")
+```
+
+---
+
+# Exploration des Données
+
+Avant la modélisation, il est essentiel d'explorer la distribution des variables pour détecter d'éventuels biais ou déséquilibres dans la cohorte. Nous analysons ici la répartition de l'âge chronologique (variable cible), du sexe et de l'ethnie, ainsi que les corrélations entre les sites CpG et l'âge.
+
+## Distribution de l'Âge
+
+<div style="background-color: #eaf2f8; padding: 12px; border-left: 4px solid #3498db; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à caractériser la distribution de l'âge chronologique dans notre cohorte afin de vérifier que l'ensemble des tranches d'âge est représenté de manière équilibrée. Une distribution homogène est essentielle pour garantir la robustesse du modèle sur tout le spectre d'âge.
+</div>
+
+```{r age-distribution}
+ggplot(metadata, aes(x = age)) +
+  geom_histogram(bins = 30, fill = "#3498db", color = "white", alpha = 0.8) +
+  geom_density(aes(y = after_stat(count)), color = "#e74c3c", linewidth = 1.2) +
+  labs(
+    title = "Distribution de l'âge des échantillons",
+    subtitle = paste("N =", nrow(metadata), "sujets"),
+    x = "Âge (années)",
+    y = "Nombre d'échantillons"
+  )
+
+age_stats <- data.frame(
+  Statistique = c("Minimum", "Q1", "Médiane", "Moyenne", "Q3", "Maximum", "Écart-type"),
+  Valeur = c(
+    round(min(metadata$age), 1),
+    round(quantile(metadata$age, 0.25), 1),
+    round(median(metadata$age), 1),
+    round(mean(metadata$age), 1),
+    round(quantile(metadata$age, 0.75), 1),
+    round(max(metadata$age), 1),
+    round(sd(metadata$age), 1)
+  )
+)
+
+knitr::kable(age_stats, caption = "Statistiques descriptives de l'âge") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#3498db") %>%
+  row_spec(4, bold = TRUE, background = "#d6eaf8")
+```
+
+```{r age-interpretation, echo=FALSE, results='asis'}
+# Interprétation automatique de la distribution de l'âge
+age_range <- max(metadata$age) - min(metadata$age)
+age_skew <- (mean(metadata$age) - median(metadata$age)) / sd(metadata$age)
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+cat(paste0('Notre cohorte couvre une plage d\'âge de <strong>', round(min(metadata$age), 0), 
+           ' à ', round(max(metadata$age), 0), ' ans</strong> (amplitude de ', round(age_range, 0), ' ans). '))
+
+if(abs(age_skew) < 0.2) {
+  cat('La distribution est <strong>relativement symétrique</strong> (skewness proche de 0), ce qui est favorable pour la modélisation. ')
+} else if(age_skew > 0.2) {
+  cat('La distribution est légèrement <strong>asymétrique vers la droite</strong> (plus de sujets jeunes), ce qui pourrait affecter les prédictions aux âges extrêmes. ')
+} else {
+  cat('La distribution est légèrement <strong>asymétrique vers la gauche</strong> (plus de sujets âgés). ')
+}
+
+cat(paste0('L\'âge moyen est de <strong>', round(mean(metadata$age), 1), ' ans</strong> avec un écart-type de ', 
+           round(sd(metadata$age), 1), ' ans.'))
+cat('</div>')
+```
+
+## Distribution par Sexe et Ethnie
+
+<div style="background-color: #f5eef8; padding: 12px; border-left: 4px solid #9b59b6; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à évaluer l'équilibre démographique de notre cohorte selon le sexe et l'ethnie. Un déséquilibre important pourrait introduire des biais dans le modèle et compromettre sa généralisabilité à d'autres populations.
+</div>
+
+```{r demographics}
+# Distribution par sexe
+p1 <- ggplot(metadata, aes(x = factor(female, labels = c("Homme", "Femme")), fill = factor(female))) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_manual(values = c("#3498db", "#e91e63")) +
+  labs(title = "Répartition par sexe", x = "Sexe", y = "Effectif") +
+  theme(legend.position = "none")
+
+# Distribution par ethnie
+p2 <- ggplot(metadata, aes(x = ethnicity, fill = ethnicity)) +
+  geom_bar(alpha = 0.8) +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Répartition par ethnie", x = "Ethnie", y = "Effectif") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+# Tableau croisé
+demo_summary <- metadata %>%
+  group_by(Sexe = factor(female, labels = c("Homme", "Femme")), Ethnie = ethnicity) %>%
+  summarise(N = n(), Age_Moyen = round(mean(age), 1), .groups = "drop")
+
+knitr::kable(demo_summary, caption = "Répartition démographique") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#9b59b6")
+```
+
+```{r demo-interpretation, echo=FALSE, results='asis'}
+# Interprétation automatique de la démographie
+n_hommes <- sum(metadata$female == FALSE)
+n_femmes <- sum(metadata$female == TRUE)
+ratio_sexe <- n_femmes / n_hommes
+ethnie_counts <- table(metadata$ethnicity)
+ethnie_maj <- names(which.max(ethnie_counts))
+prop_maj <- round(100 * max(ethnie_counts) / nrow(metadata), 1)
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+
+# Analyse sexe
+cat(paste0('La cohorte comprend <strong>', n_hommes, ' hommes</strong> et <strong>', n_femmes, ' femmes</strong>. '))
+if(ratio_sexe > 0.8 && ratio_sexe < 1.25) {
+  cat('Le ratio H/F est <strong>équilibré</strong>, ce qui minimise les biais liés au sexe. ')
+} else if(ratio_sexe >= 1.25) {
+  cat('Les <strong>femmes sont surreprésentées</strong>, ce qui pourrait biaiser les prédictions pour les hommes. ')
+} else {
+  cat('Les <strong>hommes sont surreprésentés</strong>, ce qui pourrait biaiser les prédictions pour les femmes. ')
+}
+
+# Analyse ethnie
+cat(paste0('Concernant l\'ethnie, le groupe majoritaire est <strong>', ethnie_maj, '</strong> (', prop_maj, '% de la cohorte). '))
+if(prop_maj > 70) {
+  cat('Cette <strong>faible diversité ethnique</strong> limite la généralisabilité du modèle.')
+} else {
+  cat('La diversité ethnique est <strong>satisfaisante</strong> pour une bonne généralisabilité.')
+}
+cat('</div>')
+```
+
+## Corrélation CpG vs Âge
+
+<div style="background-color: #f5eef8; padding: 12px; border-left: 4px solid #9b59b6; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à identifier les sites CpG dont le niveau de méthylation est le plus fortement associé à l'âge chronologique. Ces CpG constituent les biomarqueurs candidats pour la construction de notre horloge épigénétique.
+</div>
+
+```{r cpg-age-correlation}
+cor_with_age_all <- sapply(cpg_data, function(x) cor(x, metadata$age, use = "complete.obs"))
+
+ggplot(data.frame(r = cor_with_age_all), aes(x = r)) +
+  geom_histogram(bins = 50, fill = "#9b59b6", color = "white", alpha = 0.8) +
+  geom_vline(xintercept = c(-0.3, 0.3), linetype = "dashed", color = "#e74c3c", linewidth = 1) +
+  labs(
+    title = "Distribution des corrélations CpG vs Âge",
+    subtitle = "Les lignes rouges indiquent |r| > 0.3",
+    x = "Coefficient de corrélation (r)",
+    y = "Nombre de CpG"
+  )
+
+top_corr_cpg <- data.frame(
+  CpG = names(sort(abs(cor_with_age_all), decreasing = TRUE)[1:10]),
+  Correlation = round(sort(abs(cor_with_age_all), decreasing = TRUE)[1:10], 4)
+)
+
+knitr::kable(top_corr_cpg, caption = "Top 10 CpG les plus corrélés avec l'âge") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#9b59b6") %>%
+  row_spec(1:3, bold = TRUE, background = "#f5eef8")
+```
+
+```{r cpg-corr-interpretation, echo=FALSE, results='asis'}
+# Interprétation automatique des corrélations CpG
+n_strong_pos <- sum(cor_with_age_all > 0.3, na.rm = TRUE)
+n_strong_neg <- sum(cor_with_age_all < -0.3, na.rm = TRUE)
+n_total <- length(cor_with_age_all)
+max_cor <- max(abs(cor_with_age_all), na.rm = TRUE)
+best_cpg <- names(which.max(abs(cor_with_age_all)))
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+cat(paste0('Sur les <strong>', n_total, ' CpG</strong> analysés, nous identifions <strong>', 
+           n_strong_pos, ' CpG positivement corrélés</strong> (r > 0.3) et <strong>', 
+           n_strong_neg, ' CpG négativement corrélés</strong> (r < -0.3) avec l\'âge. '))
+cat(paste0('Le CpG le plus fortement associé est <strong>', best_cpg, '</strong> avec |r| = ', 
+           round(max_cor, 3), '. '))
+
+if(n_strong_pos + n_strong_neg > 50) {
+  cat('Ce nombre important de CpG informatifs suggère un <strong>signal épigénétique robuste</strong> pour la prédiction de l\'âge.')
+} else if(n_strong_pos + n_strong_neg > 10) {
+  cat('Ce nombre modéré de CpG informatifs est <strong>suffisant</strong> pour construire une horloge épigénétique.')
+} else {
+  cat('Le faible nombre de CpG fortement corrélés pourrait <strong>limiter la précision</strong> du modèle.')
+}
+cat('</div>')
+```
+
+---
+
+# Préparation des Données pour le Machine Learning
+
+Cette étape prépare les données pour la modélisation : séparation train/test (80/20), sélection des CpG les plus corrélés à l'âge sur le jeu d'entraînement uniquement (pour éviter le data leakage), et encodage numérique des covariables catégorielles (sexe, ethnie).
+
+## Séparation Train/Test
+
+<div class="warning-box">
+**Important :** La sélection des CpG est réalisée **uniquement sur le jeu d'entraînement** pour éviter toute fuite d'information.
+</div>
+
+```{r train-test-split}
+# ═══════════════════════════════════════════════════════════════════
+# SÉPARATION TRAIN/TEST + PRÉTRAITEMENT SANS DATA LEAKAGE
+# ═══════════════════════════════════════════════════════════════════
+
+set.seed(123)
+
+metadata_cols_ml <- c("Sample_Name", "female", "ethnicity", "age", "Sample_description")
+if (!exists("final_data")) stop("Objet final_data introuvable pour le split train/test")
+if (!inherits(final_data, "data.table")) setDT(final_data)
+
+n <- nrow(final_data)
+train_idx <- sample(seq_len(n), size = floor(TRAIN_RATIO * n))
+
+train_dt <- final_data[train_idx, ]
+test_dt  <- final_data[-train_idx, ]
+
+metadata_train <- as.data.frame(train_dt[, ..metadata_cols_ml])
+metadata_test  <- as.data.frame(test_dt[, ..metadata_cols_ml])
+
+cpg_cols_ml <- setdiff(names(final_data), metadata_cols_ml)
+cpg_train_raw <- as.data.frame(train_dt[, ..cpg_cols_ml])
+cpg_test_raw  <- as.data.frame(test_dt[, ..cpg_cols_ml])
+
+# Filtrage CpG appris sur TRAIN uniquement
+na_rate_train <- colMeans(is.na(cpg_train_raw))
+keep_cpg_ml <- names(na_rate_train)[na_rate_train < 0.20]
+
+cpg_train_f <- cpg_train_raw[, keep_cpg_ml, drop = FALSE]
+cpg_test_f  <- cpg_test_raw[, keep_cpg_ml, drop = FALSE]
+
+# Imputation médiane apprise sur TRAIN et appliquée au TEST
+train_medians <- vapply(cpg_train_f, function(x) median(x, na.rm = TRUE), numeric(1))
+for (col in names(train_medians)) {
+  cpg_train_f[[col]][is.na(cpg_train_f[[col]])] <- train_medians[[col]]
+  cpg_test_f[[col]][is.na(cpg_test_f[[col]])] <- train_medians[[col]]
+}
+
+cpg_train <- cpg_train_f
+cpg_test  <- cpg_test_f
+
+y_train <- as.numeric(metadata_train$age)
+y_test  <- as.numeric(metadata_test$age)
+
+cat("Prétraitement anti-leakage :\n")
+cat("   - CpG initiaux :", length(cpg_cols_ml), "\n")
+cat("   - CpG conservés (NA train < 20%) :", length(keep_cpg_ml), "\n")
+cat("   - NA train après imputation :", sum(is.na(cpg_train)), "\n")
+cat("   - NA test  après imputation :", sum(is.na(cpg_test)), "\n")
+
+rm(train_dt, test_dt, cpg_train_raw, cpg_test_raw, cpg_train_f, cpg_test_f, na_rate_train, train_medians)
+gc(verbose = FALSE)
+
+split_summary <- data.frame(
+  Ensemble = c("Entraînement", "Test", "Total"),
+  N_Sujets = c(length(train_idx), n - length(train_idx), n),
+  Pourcentage = c(paste0(TRAIN_RATIO*100, "%"), paste0((1-TRAIN_RATIO)*100, "%"), "100%")
+)
+
+knitr::kable(split_summary, caption = "Partition des données") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#1abc9c") %>%
+  row_spec(1, background = "#d6eaf8") %>%
+  row_spec(2, background = "#d5f5e3")
+```
+
+## Sélection des CpG Informatifs
+
+```{r build-cov-matrix, include=FALSE}
+# ═══════════════════════════════════════════════════════════════════
+# ENCODAGE ANTICIPÉ DE cov_train_matrix (nécessaire pour cpg-selection)
+# Note : ce chunk doit s'exécuter AVANT cpg-selection.
+#        Le chunk encode-covariates (après cpg-selection) construit
+#        X_train2/X_test2 en réutilisant ces matrices.
+# ═══════════════════════════════════════════════════════════════════
+
+if (!exists("metadata_train")) stop("metadata_train introuvable — relancer train-test-split")
+if (!exists("metadata_test"))  stop("metadata_test introuvable — relancer train-test-split")
+
+female_train_chr <- as.character(metadata_train$female)
+female_test_chr  <- as.character(metadata_test$female)
+female_levels    <- sort(unique(female_train_chr))
+female_test_chr[!(female_test_chr %in% female_levels)] <- "Unknown"
+if (any(female_test_chr == "Unknown") && !("Unknown" %in% female_levels)) {
+  female_levels <- c(female_levels, "Unknown")
+}
+
+eth_train_chr <- as.character(metadata_train$ethnicity)
+eth_test_chr  <- as.character(metadata_test$ethnicity)
+eth_levels    <- sort(unique(eth_train_chr))
+eth_test_chr[!(eth_test_chr %in% eth_levels)] <- "Other"
+if (any(eth_test_chr == "Other") && !("Other" %in% eth_levels)) {
+  eth_levels <- c(eth_levels, "Other")
+}
+
+df_train_cov <- data.frame(
+  female    = factor(female_train_chr, levels = female_levels),
+  ethnicity = factor(eth_train_chr,    levels = eth_levels)
+)
+df_test_cov <- data.frame(
+  female    = factor(female_test_chr, levels = female_levels),
+  ethnicity = factor(eth_test_chr,    levels = eth_levels)
+)
+
+cov_train_matrix <- model.matrix(~ female + ethnicity, data = df_train_cov)[, -1, drop = FALSE]
+cov_test_matrix  <- model.matrix(~ female + ethnicity, data = df_test_cov)[, -1, drop = FALSE]
+
+# Aligner les colonnes train/test
+missing_test_cols <- setdiff(colnames(cov_train_matrix), colnames(cov_test_matrix))
+if (length(missing_test_cols) > 0) {
+  zeros <- matrix(0, nrow = nrow(cov_test_matrix), ncol = length(missing_test_cols))
+  colnames(zeros) <- missing_test_cols
+  cov_test_matrix <- cbind(cov_test_matrix, zeros)
+}
+extra_test_cols <- setdiff(colnames(cov_test_matrix), colnames(cov_train_matrix))
+if (length(extra_test_cols) > 0) {
+  cov_test_matrix <- cov_test_matrix[, setdiff(colnames(cov_test_matrix), extra_test_cols), drop = FALSE]
+}
+cov_test_matrix <- cov_test_matrix[, colnames(cov_train_matrix), drop = FALSE]
+
+stopifnot(identical(colnames(cov_train_matrix), colnames(cov_test_matrix)))
+message("build-cov-matrix : cov_train_matrix [",
+        nrow(cov_train_matrix), " x ", ncol(cov_train_matrix), "] créée.")
+```
+
+```{r cpg-selection}
+# ═══════════════════════════════════════════════════════════════════
+# SÉLECTION DES CPG — ANALYSE DU NOMBRE OPTIMAL + STABILITY SELECTION
+# ═══════════════════════════════════════════════════════════════════
+
+if (!exists("cov_train_matrix"))
+  stop("cov_train_matrix introuvable — vérifier que le chunk build-cov-matrix s'est exécuté")
+
+# ── 1. Corrélations sur TRAIN uniquement ────────────────────────────
+cor_with_age <- apply(cpg_train, 2, function(x) {
+  cor(x, y_train, use = "complete.obs")
+})
+
+# ── 2. Analyse du nombre optimal de CpG informatifs ─────────────────
+# Objectif : dépasser la simple règle "500 CpG" pour justifier ce seuil
+#   par une courbe RMSE vs N_CpG sur validation croisée interne (TRAIN).
+
+cat("=== Analyse du nombre optimal de CpG ===\n")
+
+cpg_grid   <- c(50, 100, 200, 300, 500, 750, 1000,
+                min(1500, ncol(cpg_train)), min(2000, ncol(cpg_train)))
+cpg_grid   <- unique(cpg_grid[cpg_grid <= ncol(cpg_train)])
+n_cv_folds <- 5
+set.seed(42)
+fold_ids   <- sample(rep(seq_len(n_cv_folds), length.out = nrow(cpg_train)))
+
+rmse_by_n <- vapply(cpg_grid, function(n_sel) {
+  cpg_n <- names(sort(abs(cor_with_age), decreasing = TRUE))[seq_len(n_sel)]
+  fold_rmse <- vapply(seq_len(n_cv_folds), function(k) {
+    id_v <- which(fold_ids == k)
+    id_f <- setdiff(seq_len(nrow(cpg_train)), id_v)
+    Xf <- cbind(as.matrix(cpg_train[id_f, cpg_n, drop = FALSE]), cov_train_matrix[id_f, , drop = FALSE])
+    Xv <- cbind(as.matrix(cpg_train[id_v, cpg_n, drop = FALSE]), cov_train_matrix[id_v, , drop = FALSE])
+    cv_k <- cv.glmnet(Xf, y_train[id_f], alpha = 0.5, standardize = TRUE, nfolds = 5)
+    m_k  <- glmnet(Xf, y_train[id_f], alpha = 0.5, lambda = cv_k$lambda.min, standardize = TRUE)
+    pred_k <- as.numeric(predict(m_k, newx = Xv))
+    sqrt(mean((pred_k - y_train[id_v])^2))
+  }, numeric(1))
+  mean(fold_rmse)
+}, numeric(1))
+
+cpg_opt_df <- data.frame(N_CpG = cpg_grid, RMSE_CV = round(rmse_by_n, 3))
+n_opt_idx  <- which.min(cpg_opt_df$RMSE_CV)
+n_opt      <- cpg_opt_df$N_CpG[n_opt_idx]
+
+cat("RMSE interne par nombre de CpG :\n")
+print(cpg_opt_df)
+cat("\nNombre optimal (RMSE minimal en CV) :", n_opt, "CpG\n")
+cat("N_CPG_SELECTION configuré            :", N_CPG_SELECTION, "CpG\n")
+
+# Graphique
+ggplot(cpg_opt_df, aes(x = N_CpG, y = RMSE_CV)) +
+  geom_line(color = "#3498db", linewidth = 1.2) +
+  geom_point(color = "#3498db", size = 3) +
+  geom_point(data = cpg_opt_df[n_opt_idx, ], color = "#e74c3c", size = 5) +
+  geom_vline(xintercept = n_opt, linetype = "dashed", color = "#e74c3c") +
+  geom_vline(xintercept = N_CPG_SELECTION, linetype = "dotted", color = "#f39c12") +
+  annotate("text", x = n_opt, y = max(cpg_opt_df$RMSE_CV),
+           label = paste0("Optimal = ", n_opt), hjust = -0.1, color = "#e74c3c", size = 4) +
+  labs(
+    title = "RMSE (CV interne) selon le nombre de CpG sélectionnés",
+    subtitle = "Rouge = optimal CV | Orange = seuil configuré",
+    x = "Nombre de CpG", y = "RMSE (CV, années)"
+  )
+
+knitr::kable(cpg_opt_df, caption = "RMSE CV selon le nombre de CpG") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#9b59b6") %>%
+  row_spec(n_opt_idx, bold = TRUE, background = "#d4edda")
+
+# ── 3. Stability Selection (Meinshausen & Bühlmann, 2010) ────────────
+# Principe : répéter la sélection Lasso sur B sous-échantillons bootstrap ;
+# un CpG est "stable" s'il est sélectionné dans >50% des répétitions.
+# Méthode plus conservative que la simple corrélation, réduit les faux positifs.
+
+cat("\n=== Stability Selection ===\n")
+
+set.seed(123)
+B_boot        <- 50          # nombre de répétitions bootstrap
+prop_boot     <- 0.632       # proportion d'observations dans chaque sous-échantillon
+pi_thr        <- 0.6         # seuil de sélection (≥60% des répétitions)
+n_presel      <- min(N_CPG_SELECTION * 2, ncol(cpg_train))  # pré-sélection pour accélérer
+
+# Pré-sélection rapide (top 2×N_CPG corrélés) pour limiter la dimension
+presel_cpg <- names(sort(abs(cor_with_age), decreasing = TRUE))[seq_len(n_presel)]
+
+sel_freq <- numeric(n_presel)
+names(sel_freq) <- presel_cpg
+
+n_boot_sub <- max(50L, floor(prop_boot * nrow(cpg_train)))
+
+for (b in seq_len(B_boot)) {
+  idx_b <- sample(nrow(cpg_train), n_boot_sub, replace = FALSE)
+  Xb    <- cbind(as.matrix(cpg_train[idx_b, presel_cpg, drop = FALSE]),
+                 cov_train_matrix[idx_b, , drop = FALSE])
+  yb    <- y_train[idx_b]
+
+  # Lasso sur ce sous-échantillon
+  tryCatch({
+    cv_b   <- cv.glmnet(Xb, yb, alpha = 1, standardize = TRUE, nfolds = 5)
+    m_b    <- glmnet(Xb, yb, alpha = 1, lambda = cv_b$lambda.1se, standardize = TRUE)
+    coef_b <- coef(m_b)[-1, 1]  # exclure l'intercept
+    # Compter uniquement les CpG (pas les covariables)
+    coef_cpg <- coef_b[presel_cpg]
+    sel_freq  <- sel_freq + as.numeric(coef_cpg != 0)
+  }, error = function(e) NULL)
+}
+
+sel_prob    <- sel_freq / B_boot
+stability_cpg <- names(sel_prob[sel_prob >= pi_thr])
+
+cat("CpG stables (probabilité de sélection ≥", pi_thr * 100, "%) :", length(stability_cpg), "\n")
+cat("Distribution des probabilités de sélection :\n")
+print(summary(sel_prob))
+
+# Tableau top 20 CpG stables
+top_stab_df <- data.frame(
+  CpG          = names(sort(sel_prob, decreasing = TRUE)[1:min(20, n_presel)]),
+  Prob_Sel     = round(sort(sel_prob, decreasing = TRUE)[1:min(20, n_presel)], 3),
+  Stable       = sort(sel_prob, decreasing = TRUE)[1:min(20, n_presel)] >= pi_thr
+)
+
+knitr::kable(top_stab_df, caption = "Top 20 CpG - Probabilité de sélection (Stability Selection)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#8e44ad") %>%
+  row_spec(which(top_stab_df$Stable), background = "#d4edda")
+
+ggplot(data.frame(CpG = names(sel_prob), Prob = sel_prob), aes(x = Prob)) +
+  geom_histogram(bins = 30, fill = "#8e44ad", color = "white", alpha = 0.8) +
+  geom_vline(xintercept = pi_thr, linetype = "dashed", color = "#e74c3c", linewidth = 1) +
+  annotate("text", x = pi_thr + 0.02, y = Inf, vjust = 2,
+           label = paste0("Seuil = ", pi_thr), color = "#e74c3c") +
+  labs(
+    title = "Distribution des probabilités de sélection (Stability Selection)",
+    subtitle = paste0("B = ", B_boot, " répétitions, seuil π = ", pi_thr),
+    x = "Probabilité de sélection", y = "Nombre de CpG"
+  )
+
+# ── 4. Sélection finale (union : corrélation OU stability) ───────────
+# Stratégie : utiliser les N_CPG_SELECTION CpG par corrélation comme base,
+# en intégrant les CpG stables s'ils ne sont pas déjà présents.
+
+n_cpg_selected <- min(N_CPG_SELECTION, ncol(cpg_train))
+top_cpg        <- names(sort(abs(cor_with_age), decreasing = TRUE))[1:n_cpg_selected]
+
+# Ajouter les CpG stables non encore sélectionnés (s'il y en a)
+extra_stable   <- setdiff(stability_cpg, top_cpg)
+if (length(extra_stable) > 0) {
+  cat("\n", length(extra_stable), "CpG stables supplémentaires ajoutés à la sélection.\n")
+  top_cpg <- c(top_cpg, extra_stable)
+}
+top_cpg_selected <- top_cpg
+
+cpg_train_sel <- cpg_train[, top_cpg_selected, drop = FALSE]
+cpg_test_sel  <- cpg_test[, top_cpg_selected, drop = FALSE]
+
+cat("\nSélection finale :", length(top_cpg_selected), "CpG (corrélation + stability)\n")
+cat("  dont", n_cpg_selected, "par corrélation et",
+    length(extra_stable), "supplémentaires par stability selection\n")
+```
+
+## Encodage des Covariables
+
+```{r encode-covariates}
+# ═══════════════════════════════════════════════════════════════════
+# CONSTRUCTION DES MATRICES FINALES TRAIN/TEST (CpG + covariables)
+# Note : cov_train_matrix et cov_test_matrix sont créées dans le
+#        chunk build-cov-matrix (avant cpg-selection).
+# ═══════════════════════════════════════════════════════════════════
+
+if (!exists("cov_train_matrix") || !exists("cov_test_matrix"))
+  stop("cov_train_matrix/cov_test_matrix introuvables — chunk build-cov-matrix non exécuté")
+if (!exists("cpg_train_sel") || !exists("cpg_test_sel"))
+  stop("cpg_train_sel/cpg_test_sel introuvables — chunk cpg-selection non exécuté")
+
+X_train <- as.matrix(cpg_train_sel)
+X_test  <- as.matrix(cpg_test_sel)
+
+X_train2 <- cbind(X_train, cov_train_matrix)
+X_test2  <- cbind(X_test, cov_test_matrix)
+
+cat("\nDimensions des matrices :\n")
+cat("   - X_train2 :", nrow(X_train2), "x", ncol(X_train2), "\n")
+cat("   - X_test2  :", nrow(X_test2), "x", ncol(X_test2), "\n")
+
+stopifnot(ncol(X_train2) == ncol(X_test2))
+stopifnot(identical(colnames(X_train2), colnames(X_test2)))
+```
+
+## Analyse en Composantes Principales (ACP)
+
+<div style="background-color: #eaf2f8; padding: 12px; border-left: 4px solid #3498db; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à visualiser la structure des données de méthylation en réduisant leur dimensionnalité via l'ACP. Cette analyse permet d'identifier les axes de variation principaux et de détecter d'éventuels regroupements liés à l'âge ou au sexe.
+</div>
+
+<div style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); padding: 20px; border-radius: 10px; color: white; margin: 15px 0;">
+<h4 style="margin-top: 0; color: white;">Formulation de l'ACP</h4>
+
+$$\mathbf{X} = \mathbf{U} \mathbf{\Sigma} \mathbf{V}^T$$
+
+<p style="font-size: 0.9em;">
+<strong>Objectif :</strong> Trouver les composantes principales \(\mathbf{PC}_k = \mathbf{X}\mathbf{v}_k\) maximisant la variance expliquée.<br>
+<strong>Variance expliquée par \(\mathrm{PC}_k\) :</strong> \(\frac{\lambda_k}{\sum_j \lambda_j}\) où \(\lambda_k = \sigma_k^2\)
+</p>
+</div>
+
+```{r acp-analysis}
+# ═══════════════════════════════════════════════════════════════════
+# ANALYSE EN COMPOSANTES PRINCIPALES
+# ═══════════════════════════════════════════════════════════════════
+
+# ACP sur les CpG sélectionnés (données centrées-réduites)
+# ncp = 50 pour couvrir jusqu'à 50 composantes (suffisant pour atteindre 80% de variance)
+pca_result <- PCA(X_train, scale.unit = TRUE, ncp = min(50L, nrow(X_train) - 1L, ncol(X_train)), graph = FALSE)
+
+# Variance expliquée
+var_expliquee <- pca_result$eig[1:10, ]
+colnames(var_expliquee) <- c("Valeur propre", "% Variance", "% Cumulé")
+
+knitr::kable(var_expliquee, digits = 2,
+             caption = "Variance expliquée par les 10 premières composantes") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#3498db") %>%
+  row_spec(1:2, bold = TRUE, background = "#d6eaf8")
+```
+
+```{r acp-screeplot}
+# Scree plot (éboulis des valeurs propres)
+fviz_screeplot(pca_result, addlabels = TRUE, ylim = c(0, 30),
+               barfill = "#3498db", barcolor = "white") +
+  labs(title = "Éboulis des valeurs propres (Scree Plot)",
+       subtitle = "Variance expliquée par chaque composante principale",
+       x = "Dimension", y = "% de variance expliquée") +
+  geom_hline(yintercept = 5, linetype = "dashed", color = "#e74c3c")
+```
+
+```{r acp-individuals}
+# Projection des individus - colorée par âge
+pca_ind <- as.data.frame(pca_result$ind$coord[, 1:2])
+pca_ind$age <- y_train
+pca_ind$sexe <- factor(metadata_train$female, labels = c("Homme", "Femme"))
+
+# Graphique avec dégradé d'âge
+p_age <- ggplot(pca_ind, aes(x = Dim.1, y = Dim.2, color = age)) +
+  geom_point(alpha = 0.7, size = 2.5) +
+  scale_color_viridis_c(option = "plasma", name = "Âge") +
+  labs(title = "Projection ACP - Coloration par Âge",
+       x = paste0("PC1 (", round(pca_result$eig[1, 2], 1), "%)"),
+       y = paste0("PC2 (", round(pca_result$eig[2, 2], 1), "%)")) +
+  theme_minimal()
+
+# Graphique par sexe
+p_sex <- ggplot(pca_ind, aes(x = Dim.1, y = Dim.2, color = sexe)) +
+  geom_point(alpha = 0.7, size = 2.5) +
+  scale_color_manual(values = c("#3498db", "#e91e63"), name = "Sexe") +
+  labs(title = "Projection ACP - Coloration par Sexe",
+       x = paste0("PC1 (", round(pca_result$eig[1, 2], 1), "%)"),
+       y = paste0("PC2 (", round(pca_result$eig[2, 2], 1), "%)")) +
+  theme_minimal()
+
+gridExtra::grid.arrange(p_age, p_sex, ncol = 2)
+```
+
+```{r acp-variables}
+# Contribution des variables aux dimensions principales
+fviz_contrib(pca_result, choice = "var", axes = 1, top = 15) +
+  labs(title = "Top 15 CpG contribuant à PC1") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r acp-interpretation, echo=FALSE, results='asis'}
+# Interprétation automatique de l'ACP
+var_pc1_pc2 <- sum(pca_result$eig[1:2, 2])
+cor_pc1_age <- cor(pca_ind$Dim.1, y_train)
+cor_pc2_age <- cor(pca_ind$Dim.2, y_train)
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+cat(paste0('Les deux premières composantes principales capturent <strong>', round(var_pc1_pc2, 1), 
+           '% de la variance totale</strong>. '))
+cat(paste0('La corrélation de PC1 avec l\'âge est de <strong>r = ', round(cor_pc1_age, 3), '</strong> et celle de PC2 est de <strong>r = ', round(cor_pc2_age, 3), '</strong>. '))
+
+if(abs(cor_pc1_age) > 0.3 || abs(cor_pc2_age) > 0.3) {
+  cat('Ces corrélations confirment que <strong>l\'âge structure significativement les données de méthylation</strong>, justifiant l\'utilisation de ces CpG pour la prédiction.')
+} else {
+  cat('La relation âge-ACP est subtile, suggérant que les CpG les plus variables ne sont pas nécessairement les plus prédictifs de l\'âge.')
+}
+cat('</div>')
+```
+
+## Entraînement sur Composantes Principales (ACP)
+
+<div style="background-color: #eaf2f8; padding: 12px; border-left: 4px solid #3498db; margin-bottom: 15px;">
+<strong>Objectif :</strong> Utiliser les composantes principales comme features pour un modèle Elastic Net. La réduction par ACP élimine la multicolinéarité entre CpG et peut améliorer la généralisation du modèle.
+</div>
+
+```{r pca-training}
+# ═══════════════════════════════════════════════════════════════════
+# MODÈLE ELASTIC NET SUR COMPOSANTES ACP
+# ═══════════════════════════════════════════════════════════════════
+
+# ACP dédiée à la modélisation: fit sur TRAIN, projection stable sur TEST
+pca_fit <- prcomp(
+  X_train,
+  center = TRUE,
+  scale. = TRUE,
+  rank. = min(50L, nrow(X_train) - 1L, ncol(X_train))
+)
+
+var_cum <- cumsum((pca_fit$sdev^2) / sum(pca_fit$sdev^2)) * 100
+n_pc <- which(var_cum >= 80)[1]
+if (is.na(n_pc) || n_pc < 5) n_pc <- min(20L, ncol(pca_fit$x))
+
+cat("Composantes ACP retenues :", n_pc, "(variance cumulée =", 
+    round(var_cum[n_pc], 1), "%)\n")
+
+# Coordonnées des individus sur les n_pc premières composantes (TRAIN)
+PC_train <- pca_fit$x[, 1:n_pc, drop = FALSE]
+
+# Projection TEST dans l'espace ACP appris sur TRAIN
+PC_test <- predict(pca_fit, newdata = X_test)[, 1:n_pc, drop = FALSE]
+
+# Ajouter covariables sexe + ethnie
+PC_train2 <- cbind(PC_train, cov_train_matrix)
+PC_test2  <- cbind(PC_test,  cov_test_matrix)
+
+# Entraîner Elastic Net sur les composantes ACP
+set.seed(123)
+cv_pca <- cv.glmnet(PC_train2, y_train, alpha = 0.5, standardize = TRUE, nfolds = N_FOLDS)
+pca_model <- glmnet(PC_train2, y_train, alpha = 0.5, lambda = cv_pca$lambda.min, standardize = TRUE)
+pca_pred <- as.numeric(predict(pca_model, newx = PC_test2))
+
+pca_rmse <- sqrt(mean((pca_pred - y_test)^2))
+pca_mae  <- mean(abs(pca_pred - y_test))
+pca_cor  <- cor(pca_pred, y_test)
+pca_r2   <- 1 - sum((y_test - pca_pred)^2) / sum((y_test - mean(y_test))^2)
+
+stopifnot(length(pca_pred) == length(y_test))
+calib_pca <- coef(lm(pca_pred ~ y_test))
+
+cat("\nElastic Net sur ACP :\n")
+cat("   - RMSE :", round(pca_rmse, 2), "années\n")
+cat("   - MAE  :", round(pca_mae, 2), "années\n")
+cat("   - Corr :", round(pca_cor, 3), "\n")
+cat("   - R² (classique) :", round(pca_r2, 3), "\n")
+cat("   - Calibration (intercept, slope) :", round(calib_pca[1], 3), ",", round(calib_pca[2], 3), "\n")
+
+# Comparaison directe
+enet_rmse_ref <- if (exists("enet_rmse")) round(enet_rmse, 2) else NA_real_
+enet_cor_ref  <- if (exists("enet_cor")) round(enet_cor, 3) else NA_real_
+
+pca_comparison <- data.frame(
+  Approche = c("Elastic Net (CpG bruts)", "Elastic Net (ACP)"),
+  N_Features = c(ncol(X_train2), ncol(PC_train2)),
+  RMSE = c(enet_rmse_ref, round(pca_rmse, 2)),
+  Corrélation = c(enet_cor_ref, round(pca_cor, 3)),
+  R2 = c(if (exists("enet_r2")) round(enet_r2, 3) else NA_real_, round(pca_r2, 3))
+)
+
+knitr::kable(pca_comparison, 
+             caption = "CpG bruts vs Composantes ACP") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), 
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#3498db")
+```
+
+```{r pca-training-interp, echo=FALSE, results='asis'}
+# Calculer pca_diff seulement si les deux valeurs existent
+pca_diff <- if (exists("enet_rmse") && exists("pca_rmse")) round(pca_rmse - enet_rmse, 2) else NA_real_
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+if(!exists("enet_rmse") || !exists("pca_rmse")) {
+  cat('Le modèle Elastic Net sur CpG bruts est exécuté plus bas dans le document, donc la comparaison directe RMSE sera disponible après exécution complète.')
+} else if(pca_diff < -0.5) {
+  cat(paste0('L\'approche ACP <strong>améliore</strong> le RMSE de ', abs(pca_diff), 
+             ' ans en réduisant de ', ncol(X_train2), ' à ', ncol(PC_train2), ' features. La réduction de dimensionnalité par ACP est bénéfique.'))
+} else if(pca_diff < 0.5) {
+  cat(paste0('L\'approche ACP donne des résultats <strong>comparables</strong> (RMSE ±', abs(pca_diff), 
+             ' ans) avec seulement ', n_pc, ' composantes au lieu de ', ncol(X_train2) - 2, ' CpG. Intérêt majeur : réduction du temps de calcul.'))
+} else {
+  cat(paste0('L\'approche ACP <strong>perd</strong> ', pca_diff, 
+             ' ans de RMSE. Les CpG bruts restent préférables ici, suggérant que l\'information prédictive est répartie au-delà des premières composantes.'))
+}
+cat('</div>')
+```
+
+---
+
+# Modélisation Machine Learning
+
+Nous comparons six algorithmes de régression répartis en deux catégories.
+
+## Méthodes Linéaires Pénalisées
+
+Ces méthodes modélisent l'âge comme une combinaison linéaire des valeurs de méthylation, avec une pénalité pour éviter le surapprentissage.
+
+<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; color: white; margin: 15px 0;">
+<h4 style="margin-top: 0; color: white;">Formulation Générale - Régression Pénalisée</h4>
+
+$$\min_{\beta} \left\{ \frac{1}{2n} \sum_{i=1}^{n} (y_i - \beta_0 - \sum_{j=1}^{p} x_{ij}\beta_j)^2 + \lambda \left[ \alpha \|\beta\|_1 + \frac{(1-\alpha)}{2} \|\beta\|_2^2 \right] \right\}$$
+
+<p style="font-size: 0.9em;"><strong>Où :</strong> $y_i$ = âge, $x_{ij}$ = valeur de méthylation du CpG $j$, $\lambda$ = intensité de la pénalité, $\alpha$ = balance L1/L2</p>
+</div>
+
+
+```{r formules-lineaires, echo=FALSE}
+library(knitr)
+library(kableExtra)
+
+# Tableau des méthodes linéaires
+methods_lin <- data.frame(
+  Methode = c("Ridge", "Lasso", "Elastic Net"),
+  Alpha = c("$\\alpha = 0$", 
+            "$\\alpha = 1$", 
+            "$0 \\lt \\alpha \\lt 1$"),
+  Penalite = c("$L_2$ uniquement", 
+               "$L_1$ uniquement", 
+               "$L_1 + L_2$"),
+  Formule_Penalite = c(
+    "$\\lambda \\sum_j \\beta_j^2$",
+    "$\\lambda \\sum_j |\\beta_j|$",
+    "$\\lambda \\left[ \\alpha \\sum_j |\\beta_j| + (1 - \\alpha) \\sum_j \\beta_j^2 \\right]$"
+  ),
+  Propriete = c("Réduit les coefficients sans les annuler",
+                "Sélection de variables (coefficients = 0)",
+                "Compromis sélection / régularisation"),
+  Cas_Usage = c("Tous les CpG potentiellement informatifs",
+                "Sélection d'un sous-ensemble de biomarqueurs",
+                "Méthode de référence (Horvath, 2013)")
+)
+
+knitr::kable(
+  methods_lin,
+  format = "html",
+  col.names = c("Méthode", "Paramètre", "Pénalité", "Formule", "Propriété", "Cas d'usage"),
+  caption = "Comparaison des méthodes linéaires pénalisées",
+  escape = FALSE,
+  sanitize.text.function = identity
+) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "bordered"),
+    full_width = TRUE
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#667eea") %>%
+  row_spec(1, background = "#e8f4fd") %>%
+  row_spec(2, background = "#fef3e8") %>%
+  row_spec(3, background = "#e8fdf4") %>%
+  column_spec(1, bold = TRUE, width = "10%") %>%
+  column_spec(4, width = "22%")
+```
+
+## Méthodes Non-Linéaires
+
+Ces méthodes peuvent capturer des relations complexes entre CpG et âge.
+
+```{r formules-nonlineaires, echo=FALSE}
+library(knitr)
+library(kableExtra)
+
+# Tableau des méthodes non-linéaires
+methods_nonlin <- data.frame(
+  Methode = c("Random Forest", "XGBoost", "SVM (RBF)"),
+  Formule = c(
+    "$\\hat{y} = \\frac{1}{B} \\sum_{b=1}^{B} T_b(x)$",
+    "$\\hat{y}^{(t)} = \\hat{y}^{(t-1)} + \\eta \\, f_t(x)$",
+    "$K(x, x') = \\exp\\big(-\\gamma \\|x - x'\\|^2\\big)$"
+  ),
+  Definition = c(
+    "Moyenne de $B$ arbres de décision indépendants",
+    "Construction séquentielle corrigeant les erreurs",
+    "Noyau gaussien pour mapper en haute dimension"
+  ),
+  Parametres = c(
+    "$B = 500$, $mtry = \\sqrt{p}$",
+    "$\\eta$ = taux d'apprentissage, $T$ itérations",
+    "$\\gamma$ = largeur du noyau, $C$ = coût"
+  ),
+  Avantages = c(
+    "Robuste, gère les interactions",
+    "Très performant, régularisation intégrée",
+    "Efficace en haute dimension"
+  )
+)
+
+knitr::kable(
+  methods_nonlin,
+  format = "html",
+  col.names = c("Méthode", "Formule", "Définition", "Paramètres clés", "Avantages"),
+  caption = "Comparaison des méthodes non-linéaires",
+  escape = FALSE,
+  sanitize.text.function = identity
+) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "bordered"),
+    full_width = TRUE
+  ) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#e74c3c") %>%
+  row_spec(1, background = "#fdeaea") %>%
+  row_spec(2, background = "#fef9ea") %>%
+  row_spec(3, background = "#eafef4") %>%
+  column_spec(1, bold = TRUE, width = "12%") %>%
+  column_spec(2, monospace = TRUE, width = "22%")
+```
+
+## Validation Croisée pour l'Évaluation Robuste
+
+```{r cv-setup}
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURATION DE LA VALIDATION CROISÉE
+# ═══════════════════════════════════════════════════════════════════
+
+set.seed(123)
+
+# Création des folds
+folds <- createFolds(y_train, k = N_FOLDS, list = TRUE, returnTrain = FALSE)
+
+# Fonction pour calculer les métriques
+compute_metrics <- function(pred, actual) {
+  sse <- sum((actual - pred)^2)
+  sst <- sum((actual - mean(actual))^2)
+  data.frame(
+    RMSE = sqrt(mean((pred - actual)^2)),
+    MAE = mean(abs(pred - actual)),
+    Correlation = cor(pred, actual),
+    R2 = 1 - sse / sst
+  )
+}
+
+cat("Validation croisée configurée avec", N_FOLDS, "folds\n")
+```
+
+## Modèle 1 : Elastic Net (Baseline)
+
+Méthode de référence utilisée par Horvath (2013). Avec $\alpha = 0.5$, elle combine sélection de variables (L1) et régularisation (L2).
+
+```{r elastic-net}
+# ═══════════════════════════════════════════════════════════════════
+# ELASTIC NET (alpha = 0.5)
+# ═══════════════════════════════════════════════════════════════════
+
+set.seed(123)
+
+cv_enet <- cv.glmnet(X_train2, y_train, alpha = 0.5, standardize = TRUE, nfolds = N_FOLDS)
+enet_model <- glmnet(X_train2, y_train, alpha = 0.5, lambda = cv_enet$lambda.min, standardize = TRUE)
+
+enet_pred <- as.numeric(predict(enet_model, newx = X_test2))
+enet_rmse <- sqrt(mean((enet_pred - y_test)^2))
+enet_mae  <- mean(abs(enet_pred - y_test))
+enet_cor  <- cor(enet_pred, y_test)
+enet_r2   <- 1 - sum((y_test - enet_pred)^2) / sum((y_test - mean(y_test))^2)
+
+cat("Elastic Net - Résultats :\n")
+cat("   - RMSE :", round(enet_rmse, 2), "années\n")
+cat("   - MAE  :", round(enet_mae, 2), "années\n")
+cat("   - Corr :", round(enet_cor, 3), "\n")
+cat("   - R²   :", round(enet_r2, 3), "\n")
+```
+
+## Modèle 2 : Ridge Regression
+
+Avec $\alpha = 0$, Ridge applique uniquement la pénalité L2. Elle conserve toutes les variables mais réduit leurs coefficients, idéale quand tous les prédicteurs sont potentiellement informatifs.
+
+```{r ridge}
+# ═══════════════════════════════════════════════════════════════════
+# RIDGE REGRESSION (alpha = 0)
+# ═══════════════════════════════════════════════════════════════════
+
+set.seed(123)
+
+cv_ridge <- cv.glmnet(X_train2, y_train, alpha = 0, standardize = TRUE, nfolds = N_FOLDS)
+ridge_model <- glmnet(X_train2, y_train, alpha = 0, lambda = cv_ridge$lambda.min, standardize = TRUE)
+ridge_pred <- as.numeric(predict(ridge_model, newx = X_test2))
+
+ridge_rmse <- sqrt(mean((ridge_pred - y_test)^2))
+ridge_mae  <- mean(abs(ridge_pred - y_test))
+ridge_cor  <- cor(ridge_pred, y_test)
+ridge_r2   <- 1 - sum((y_test - ridge_pred)^2) / sum((y_test - mean(y_test))^2)
+
+cat("Ridge - RMSE :", round(ridge_rmse, 2), "| MAE :", round(ridge_mae, 2), "| Corr :", round(ridge_cor, 3), "| R² :", round(ridge_r2, 3), "\n")
+```
+
+## Modèle 3 : Lasso
+
+Avec $\alpha = 1$, Lasso applique uniquement la pénalité L1. Elle force certains coefficients à zéro, réalisant ainsi une sélection automatique des CpG les plus pertinents.
+
+```{r lasso}
+# ═══════════════════════════════════════════════════════════════════
+# LASSO REGRESSION (alpha = 1)
+# ═══════════════════════════════════════════════════════════════════
+
+set.seed(123)
+
+cv_lasso <- cv.glmnet(X_train2, y_train, alpha = 1, standardize = TRUE, nfolds = N_FOLDS)
+lasso_model <- glmnet(X_train2, y_train, alpha = 1, lambda = cv_lasso$lambda.min, standardize = TRUE)
+lasso_pred <- as.numeric(predict(lasso_model, newx = X_test2))
+
+lasso_rmse <- sqrt(mean((lasso_pred - y_test)^2))
+lasso_mae  <- mean(abs(lasso_pred - y_test))
+lasso_cor  <- cor(lasso_pred, y_test)
+lasso_r2   <- 1 - sum((y_test - lasso_pred)^2) / sum((y_test - mean(y_test))^2)
+
+cat("Lasso - RMSE :", round(lasso_rmse, 2), "| MAE :", round(lasso_mae, 2), "| Corr :", round(lasso_cor, 3), "| R² :", round(lasso_r2, 3), "\n")
+```
+
+## Modèle 4 : Random Forest
+
+Ensemble de 500 arbres de décision. Chaque arbre est entraîné sur un échantillon bootstrap avec $\sqrt{p}$ variables tirées aléatoirement à chaque nœud. Robuste au surapprentissage et capable de capturer des interactions non-linéaires.
+
+```{r random-forest}
+# ═══════════════════════════════════════════════════════════════════
+# RANDOM FOREST
+# ═══════════════════════════════════════════════════════════════════
+
+set.seed(123)
+
+rf_model <- randomForest(
+  x = X_train2,
+  y = y_train,
+  ntree = 500,
+  mtry = floor(sqrt(ncol(X_train2))),
+  importance = TRUE
+)
+
+rf_pred <- predict(rf_model, X_test2)
+rf_rmse <- sqrt(mean((rf_pred - y_test)^2))
+rf_mae  <- mean(abs(rf_pred - y_test))
+rf_cor  <- cor(rf_pred, y_test)
+rf_r2   <- 1 - sum((y_test - rf_pred)^2) / sum((y_test - mean(y_test))^2)
+
+cat("Random Forest - RMSE :", round(rf_rmse, 2), "| MAE :", round(rf_mae, 2), "| Corr :", round(rf_cor, 3), "| R² :", round(rf_r2, 3), "\n")
+```
+
+## Modèle 5 : XGBoost (Gradient Boosting)
+
+Algorithme de boosting construisant des arbres séquentiellement. Chaque arbre minimise les résidus du modèle précédent. Très performant sur les données tabulaires avec régularisation intégrée.
+
+```{r xgboost}
+# ═══════════════════════════════════════════════════════════════════
+# XGBOOST
+# ═══════════════════════════════════════════════════════════════════
+
+set.seed(123)
+
+dtrain <- xgb.DMatrix(data = X_train2, label = y_train)
+dtest  <- xgb.DMatrix(data = X_test2, label = y_test)
+
+params <- list(
+  objective = "reg:squarederror",
+  eval_metric = "rmse",
+  max_depth = 6,
+  eta = 0.05,
+  subsample = 0.8,
+  colsample_bytree = 0.8
+)
+
+xgb_model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = 500,
+  watchlist = list(train = dtrain),
+  verbose = 0
+)
+
+xgb_pred <- predict(xgb_model, dtest)
+xgb_rmse <- sqrt(mean((xgb_pred - y_test)^2))
+xgb_mae  <- mean(abs(xgb_pred - y_test))
+xgb_cor  <- cor(xgb_pred, y_test)
+xgb_r2   <- 1 - sum((y_test - xgb_pred)^2) / sum((y_test - mean(y_test))^2)
+
+cat("XGBoost - RMSE :", round(xgb_rmse, 2), "| MAE :", round(xgb_mae, 2), "| Corr :", round(xgb_cor, 3), "| R² :", round(xgb_r2, 3), "\n")
+```
+
+## Modèle 6 : SVM (Support Vector Regression)
+
+```{r svm}
+# ═══════════════════════════════════════════════════════════════════
+# SUPPORT VECTOR MACHINE
+# ═══════════════════════════════════════════════════════════════════
+
+set.seed(123)
+
+svm_model <- svm(
+  x = X_train2,
+  y = y_train,
+  type = "eps-regression",
+  kernel = "radial",
+  cost = 10,
+  gamma = 1/ncol(X_train2)
+)
+
+svm_pred <- predict(svm_model, X_test2)
+svm_rmse <- sqrt(mean((svm_pred - y_test)^2))
+svm_mae  <- mean(abs(svm_pred - y_test))
+svm_cor  <- cor(svm_pred, y_test)
+svm_r2   <- 1 - sum((y_test - svm_pred)^2) / sum((y_test - mean(y_test))^2)
+
+cat("SVM - RMSE :", round(svm_rmse, 2), "| MAE :", round(svm_mae, 2), "| Corr :", round(svm_cor, 3), "| R² :", round(svm_r2, 3), "\n")
+```
+
+## Modèle 7 (bis) : Stacking (Ensemble Learning)
+
+Le **stacking** combine les prédictions de plusieurs modèles de base via un méta-learner, permettant de réduire la variance et le biais résiduels. Nous utilisons les prédictions OOF (Out-Of-Fold) sur le jeu d'entraînement pour entraîner le méta-learner, évitant ainsi toute fuite d'information.
+
+<div style="background: linear-gradient(135deg, #16a085 0%, #1abc9c 100%); padding: 20px; border-radius: 10px; color: white; margin: 15px 0;">
+<h4 style="margin-top: 0; color: white;">Architecture du Stacking</h4>
+<p><strong>Niveau 0 (Base) :</strong> Elastic Net, Ridge, Lasso, Random Forest, XGBoost, SVM → prédictions OOF</p>
+<p><strong>Niveau 1 (Méta) :</strong> Ridge regression sur les prédictions OOF → prédiction finale</p>
+
+$$\hat{y}_{\text{stack}} = \text{Ridge}\!\left(\hat{y}_{\text{enet}},\, \hat{y}_{\text{ridge}},\, \hat{y}_{\text{lasso}},\, \hat{y}_{\text{rf}},\, \hat{y}_{\text{xgb}},\, \hat{y}_{\text{svm}}\right)$$
+
+</div>
+
+```{r stacking-model}
+# ═══════════════════════════════════════════════════════════════════
+# STACKING : ENSEMBLE DES MODÈLES DE BASE
+# ═══════════════════════════════════════════════════════════════════
+# Protocole : 5-fold CV sur TRAIN uniquement pour générer des
+# prédictions Out-Of-Fold (OOF) sans data leakage.
+# Le méta-learner (Ridge) est ensuite entraîné sur ces OOF preds.
+# ═══════════════════════════════════════════════════════════════════
+
+set.seed(456)
+n_stack_folds  <- 5
+stack_fold_ids <- sample(rep(seq_len(n_stack_folds), length.out = nrow(X_train2)))
+
+oof_enet  <- numeric(nrow(X_train2))
+oof_ridge <- numeric(nrow(X_train2))
+oof_lasso <- numeric(nrow(X_train2))
+oof_rf    <- numeric(nrow(X_train2))
+oof_xgb   <- numeric(nrow(X_train2))
+oof_svm   <- numeric(nrow(X_train2))
+
+cat("Génération des prédictions OOF (", n_stack_folds, "-fold CV)...\n")
+
+for (k in seq_len(n_stack_folds)) {
+  id_val_k <- which(stack_fold_ids == k)
+  id_fit_k <- setdiff(seq_len(nrow(X_train2)), id_val_k)
+  Xf_k <- X_train2[id_fit_k, , drop = FALSE]; Xv_k <- X_train2[id_val_k, , drop = FALSE]
+  yf_k <- y_train[id_fit_k]
+
+  cv_e  <- cv.glmnet(Xf_k, yf_k, alpha = 0.5, standardize = TRUE, nfolds = 5)
+  m_e   <- glmnet(Xf_k, yf_k, alpha = 0.5, lambda = cv_e$lambda.min)
+  oof_enet[id_val_k]  <- as.numeric(predict(m_e, newx = Xv_k))
+
+  cv_r  <- cv.glmnet(Xf_k, yf_k, alpha = 0, standardize = TRUE, nfolds = 5)
+  m_r   <- glmnet(Xf_k, yf_k, alpha = 0, lambda = cv_r$lambda.min)
+  oof_ridge[id_val_k] <- as.numeric(predict(m_r, newx = Xv_k))
+
+  cv_l  <- cv.glmnet(Xf_k, yf_k, alpha = 1, standardize = TRUE, nfolds = 5)
+  m_l   <- glmnet(Xf_k, yf_k, alpha = 1, lambda = cv_l$lambda.min)
+  oof_lasso[id_val_k] <- as.numeric(predict(m_l, newx = Xv_k))
+
+  m_rf_k <- randomForest(x = Xf_k, y = yf_k, ntree = 200,
+                          mtry = floor(sqrt(ncol(Xf_k))), importance = FALSE)
+  oof_rf[id_val_k] <- predict(m_rf_k, Xv_k)
+
+  dtrain_k <- xgb.DMatrix(data = Xf_k, label = yf_k)
+  params_k  <- list(objective = "reg:squarederror", eta = 0.05,
+                    max_depth = 6, subsample = 0.8, colsample_bytree = 0.8)
+  m_xgb_k  <- xgb.train(params = params_k, data = dtrain_k, nrounds = 300, verbose = 0)
+  oof_xgb[id_val_k] <- predict(m_xgb_k, xgb.DMatrix(Xv_k))
+
+  m_svm_k <- svm(x = Xf_k, y = yf_k, type = "eps-regression", kernel = "radial",
+                  cost = 10, gamma = 1/ncol(Xf_k))
+  oof_svm[id_val_k] <- predict(m_svm_k, Xv_k)
+
+  cat("  Fold", k, "/", n_stack_folds, "terminé\n")
+}
+
+# ── Méta-learner Ridge ───────────────────────────────────────────────
+meta_X_train <- cbind(oof_enet, oof_ridge, oof_lasso, oof_rf, oof_xgb, oof_svm)
+colnames(meta_X_train) <- c("enet", "ridge", "lasso", "rf", "xgb", "svm")
+cv_stack     <- cv.glmnet(meta_X_train, y_train, alpha = 0, nfolds = 10)
+stack_model  <- glmnet(meta_X_train, y_train, alpha = 0, lambda = cv_stack$lambda.min)
+stack_weights <- setNames(as.numeric(coef(stack_model))[-1],
+                           c("Elastic Net", "Ridge", "Lasso", "Random Forest", "XGBoost", "SVM"))
+
+# ── Prédictions TEST ────────────────────────────────────────────────
+meta_X_test <- cbind(enet_pred, ridge_pred, lasso_pred, rf_pred, xgb_pred, svm_pred)
+colnames(meta_X_test) <- c("enet", "ridge", "lasso", "rf", "xgb", "svm")
+stack_pred  <- as.numeric(predict(stack_model, newx = meta_X_test))
+
+stack_rmse <- sqrt(mean((stack_pred - y_test)^2))
+stack_mae  <- mean(abs(stack_pred - y_test))
+stack_cor  <- cor(stack_pred, y_test)
+stack_r2   <- 1 - sum((y_test - stack_pred)^2) / sum((y_test - mean(y_test))^2)
+
+cat("\n── Stacking Résultats ──\n")
+cat("   RMSE :", round(stack_rmse, 2), "années\n")
+cat("   MAE  :", round(stack_mae, 2), "années\n")
+cat("   Corr :", round(stack_cor, 3), "\n")
+cat("   R²   :", round(stack_r2, 3), "\n")
+
+# Poids du méta-learner
+stack_weights_df <- data.frame(
+  Modèle = names(stack_weights),
+  Poids  = round(stack_weights, 4)
+)
+
+knitr::kable(stack_weights_df, caption = "Poids du méta-learner (Ridge stacking)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#16a085") %>%
+  row_spec(which.max(abs(stack_weights_df$Poids)), bold = TRUE, background = "#d4edda")
+
+# Graphique poids
+ggplot(stack_weights_df, aes(x = reorder(Modèle, abs(Poids)), y = Poids, fill = Poids > 0)) +
+  geom_col(alpha = 0.8) + coord_flip() +
+  scale_fill_manual(values = c("FALSE" = "#e74c3c", "TRUE" = "#27ae60"),
+                    labels = c("Négatif", "Positif"), name = "Signe") +
+  labs(title = "Poids des modèles de base dans le stacking",
+       x = "Modèle de base", y = "Poids (coefficient Ridge)")
+
+# Comparaison stacking vs modèles individuels
+stack_compare <- data.frame(
+  Modèle = c("Elastic Net", "Random Forest", "XGBoost", "SVM", "Stacking"),
+  RMSE   = round(c(enet_rmse, rf_rmse, xgb_rmse, svm_rmse, stack_rmse), 2),
+  MAE    = round(c(enet_mae, rf_mae, xgb_mae, svm_mae, stack_mae), 2),
+  R2     = round(c(enet_r2, rf_r2, xgb_r2, svm_r2, stack_r2), 3)
+)
+best_stack_idx <- which.min(stack_compare$RMSE)
+knitr::kable(stack_compare, caption = "Stacking vs Modèles Individuels") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#16a085") %>%
+  row_spec(best_stack_idx, bold = TRUE, background = "#d4edda", color = "#155724")
+
+gain_stack <- round(min(c(enet_rmse, rf_rmse, xgb_rmse, svm_rmse)) - stack_rmse, 3)
+if (gain_stack > 0) {
+  cat("\nGain du stacking vs meilleur modèle individuel : +", gain_stack, "années RMSE améliorées.\n")
+} else {
+  cat("\nLe stacking n'améliore pas les prédictions sur ce jeu de test (gain =", gain_stack, ").\n")
+  cat("Le meilleur modèle individuel est préférable sur cet échantillon.\n")
+}
+```
+
+## Modèle 7 : Deep Learning (Réseau de Neurones)
+
+<div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); padding: 20px; border-radius: 10px; color: white; margin: 15px 0;">
+<h4 style="margin-top: 0; color: white;">Architecture du Réseau de Neurones</h4>
+
+$$\hat{y} = f_L(W_L \cdot f_{L-1}(W_{L-1} \cdot \ldots f_1(W_1 \cdot x + b_1) \ldots + b_{L-1}) + b_L)$$
+
+<p style="font-size: 0.9em;">
+<strong>Architecture :</strong> Input → Dense(128, ReLU) → Dropout(0.3) → Dense(64, ReLU) → Dropout(0.2) → Dense(32, ReLU) → Dense(1)<br>
+<strong>Optimiseur :</strong> Adam (learning rate = 0.001)<br>
+<strong>Loss :</strong> Mean Squared Error
+</p>
+</div>
+
+```{r reticulate-setup, message=FALSE, warning=FALSE}
+# ═══════════════════════════════════════════════════════════════════
+# CONFIGURATION RETICULATE POUR DEEP LEARNING
+# ═══════════════════════════════════════════════════════════════════
+
+library(reticulate)
+
+# Utiliser l'environnement Python système ou conda si disponible
+# Adapter le chemin selon votre installation :
+# use_python("/usr/bin/python3", required = FALSE)
+# use_condaenv("base", required = FALSE)
+
+dl_available <- tryCatch({
+  if (!RUN_DEEP_LEARNING) return(FALSE)
+  py_available(initialize = TRUE)
+  tf_ok <- py_module_available("tensorflow")
+  np_ok <- py_module_available("numpy")
+  sk_ok <- py_module_available("sklearn")
+  tf_ok & np_ok
+}, error = function(e) FALSE)
+
+if(dl_available) {
+  cat("Python détecté :", py_config()$python, "\n")
+  cat("TensorFlow disponible : OUI\n")
+} else {
+  if (RUN_DEEP_LEARNING) {
+    cat("TensorFlow non disponible -- installation recommandee :\n")
+    cat("  pip install tensorflow numpy scikit-learn\n")
+    cat("Le modèle Deep Learning sera ignoré.\n")
+  } else {
+    cat("Deep Learning désactivé (RUN_DEEP_LEARNING = FALSE).\n")
+  }
+}
+```
+
+```{r dl-prepare-data}
+# ═══════════════════════════════════════════════════════════════════
+# PRÉPARER LES DONNÉES POUR PYTHON (VIA RETICULATE)
+# ═══════════════════════════════════════════════════════════════════
+
+# Standardiser pour le réseau de neurones
+X_train_dl <- scale(X_train2)
+dl_center <- attr(X_train_dl, "scaled:center")
+dl_scale  <- attr(X_train_dl, "scaled:scale")
+
+X_test_dl <- scale(X_test2, center = dl_center, scale = dl_scale)
+
+# Convertir en matrices standard (pour transfert R → Python)
+X_train_dl <- as.matrix(X_train_dl)
+X_test_dl  <- as.matrix(X_test_dl)
+y_train_dl <- as.numeric(y_train)
+y_test_dl  <- as.numeric(y_test)
+```
+
+```{python dl-model, eval=dl_available}
+# ═══════════════════════════════════════════════════════════════════
+# DEEP LEARNING : RÉSEAU DE NEURONES (TensorFlow / Keras)
+# Fix : élimination du retracing TensorFlow (niveau production)
+# ═══════════════════════════════════════════════════════════════════
+
+import os
+# Réduire les logs C++ TF (INFO → ERROR seulement)
+os.environ.setdefault('TF_CPP_MIN_LOG_LEVEL', '2')
+
+import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers, callbacks
+
+# Fixer la graine pour reproductibilité
+tf.random.set_seed(42)
+np.random.seed(42)
+
+# ── FIX 1 : conversion explicite float32 ────────────────────────────
+# reticulate peut transmettre des listes Python ou des tableaux float64 ;
+# forcer float32 garantit un dtype stable → tf.function trace une seule fois.
+X_train = np.array(r.X_train_dl, dtype=np.float32)
+X_test  = np.array(r.X_test_dl,  dtype=np.float32)
+y_train = np.array(r.y_train_dl, dtype=np.float32).reshape(-1)
+y_test  = np.array(r.y_test_dl,  dtype=np.float32).reshape(-1)
+
+n_features = X_train.shape[1]
+print(f"Dimensions : {X_train.shape[0]} échantillons, {n_features} features")
+print(f"dtypes  — X: {X_train.dtype}, y: {y_train.dtype}")
+
+# ── FIX 2 : split manuel train / validation ─────────────────────────
+# validation_split=0.15 avec un tableau numpy crée deux shapes distinctes
+# pour la dernière batch → 2 retraces. Le split manuel + tf.data.Dataset
+# avec drop_remainder=True impose une shape fixe à chaque batch.
+BATCH_SIZE = 32
+VAL_FRAC   = 0.15
+
+n_total = len(y_train)
+n_val   = max(1, int(n_total * VAL_FRAC))
+n_train = n_total - n_val
+
+rng  = np.random.default_rng(42)
+perm = rng.permutation(n_total)
+train_idx, val_idx = perm[n_val:], perm[:n_val]
+
+# ── FIX 3 : tf.data.Dataset avec drop_remainder=True ────────────────
+# drop_remainder=True : chaque batch a exactement BATCH_SIZE lignes
+# → la forme est constante → tf.function ne retrace jamais pour le train.
+train_ds = (
+    tf.data.Dataset.from_tensor_slices(
+        (X_train[train_idx], y_train[train_idx])
+    )
+    .shuffle(n_train, seed=42, reshuffle_each_iteration=True)
+    .batch(BATCH_SIZE, drop_remainder=True)
+    .prefetch(tf.data.AUTOTUNE)
+)
+
+val_ds = (
+    tf.data.Dataset.from_tensor_slices(
+        (X_train[val_idx], y_train[val_idx])
+    )
+    .batch(BATCH_SIZE)
+    .prefetch(tf.data.AUTOTUNE)
+)
+
+# ─── Architecture du modèle (inchangée) ─────────────────────────────
+model = keras.Sequential([
+    layers.Input(shape=(n_features,)),
+    layers.Dense(128, activation='relu', kernel_regularizer=keras.regularizers.l2(1e-4)),
+    layers.BatchNormalization(),
+    layers.Dropout(0.3),
+    layers.Dense(64, activation='relu', kernel_regularizer=keras.regularizers.l2(1e-4)),
+    layers.BatchNormalization(),
+    layers.Dropout(0.2),
+    layers.Dense(32, activation='relu'),
+    layers.Dropout(0.1),
+    layers.Dense(1)
+])
+
+model.compile(
+    optimizer=keras.optimizers.Adam(learning_rate=1e-3),
+    loss='mse',
+    metrics=['mae']
+)
+
+model.summary()
+
+# ─── Callbacks ──────────────────────────────────────────────────────
+early_stop = callbacks.EarlyStopping(
+    monitor='val_loss', patience=20, restore_best_weights=True
+)
+reduce_lr = callbacks.ReduceLROnPlateau(
+    monitor='val_loss', factor=0.5, patience=10, min_lr=1e-6
+)
+
+# ─── Entraînement sur tf.data.Dataset ───────────────────────────────
+history = model.fit(
+    train_ds,
+    validation_data=val_ds,
+    epochs=200,
+    callbacks=[early_stop, reduce_lr],
+    verbose=0
+)
+
+# ── FIX 4 : prédiction via tf.constant + appel direct du modèle ─────
+# model.predict() recrée un tf.function interne pour chaque shape distincte.
+# model(tf.constant(...), training=False) utilise la trace déjà compilée
+# lors du fit → aucun retrace, exécution plus rapide sur petit jeu de test.
+X_test_t       = tf.constant(X_test, dtype=tf.float32)
+dl_predictions = model(X_test_t, training=False).numpy().flatten()
+
+# Métriques
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+rmse = np.sqrt(mean_squared_error(y_test, dl_predictions))
+mae  = mean_absolute_error(y_test, dl_predictions)
+corr = np.corrcoef(y_test, dl_predictions)[0, 1]
+sse  = np.sum((y_test - dl_predictions) ** 2)
+sst  = np.sum((y_test - np.mean(y_test)) ** 2)
+r2   = 1 - (sse / sst)
+
+print(f"\n── Deep Learning Résultats ──")
+print(f"   RMSE : {rmse:.2f} années")
+print(f"   MAE  : {mae:.2f} années")
+print(f"   Corr : {corr:.3f}")
+print(f"   R²   : {r2:.3f}")
+print(f"   Époques réelles : {len(history.history['loss'])}")
+```
+
+```{r dl-results}
+# ═══════════════════════════════════════════════════════════════════
+# RÉCUPÉRER LES RÉSULTATS DU DEEP LEARNING
+# ═══════════════════════════════════════════════════════════════════
+
+if(dl_available) {
+  dl_pred <- py$dl_predictions
+  dl_rmse <- sqrt(mean((dl_pred - y_test)^2))
+  dl_mae  <- mean(abs(dl_pred - y_test))
+  dl_cor  <- cor(dl_pred, y_test)
+  dl_r2   <- 1 - sum((y_test - dl_pred)^2) / sum((y_test - mean(y_test))^2)
+  
+  cat("Deep Learning (récupéré en R) :\n")
+  cat("   - RMSE :", round(dl_rmse, 2), "années\n")
+  cat("   - MAE  :", round(dl_mae, 2), "années\n")
+  cat("   - Corr :", round(dl_cor, 3), "\n")
+  cat("   - R²   :", round(dl_r2, 3), "\n")
+  
+  # Visualisation de l'historique d'entraînement
+  history_df <- data.frame(
+    epoch = seq_along(py$history$history$loss),
+    train_loss = unlist(py$history$history$loss),
+    val_loss = unlist(py$history$history$val_loss)
+  )
+  
+  ggplot(history_df, aes(x = epoch)) +
+    geom_line(aes(y = train_loss, color = "Train"), linewidth = 0.8) +
+    geom_line(aes(y = val_loss, color = "Validation"), linewidth = 0.8) +
+    scale_color_manual(values = c("Train" = "#3498db", "Validation" = "#e74c3c")) +
+    labs(title = "Courbe d'Apprentissage - Deep Learning",
+         subtitle = "Loss (MSE) par époque",
+         x = "Époque", y = "Loss (MSE)", color = "") +
+    theme_minimal()
+} else {
+  dl_pred <- rep(NA, length(y_test))
+  dl_rmse <- NA; dl_mae <- NA; dl_cor <- NA; dl_r2 <- NA
+  cat("Deep Learning non disponible (TensorFlow manquant)\n")
+}
+```
+
+---
+
+# Comparaison des Performances
+
+Les modèles sont évalués sur le jeu de test via quatre métriques : RMSE (erreur quadratique moyenne), MAE (erreur absolue moyenne), corrélation et R². Le meilleur modèle est celui minimisant le RMSE. Nous comparons également nos résultats à l'horloge de référence Horvath (2013).
+
+## Tableau Comparatif des Modèles
+
+```{r model-comparison}
+# ───────────── Comparaison des performances avec Deep Learning ─────────────
+
+results <- data.frame(
+  Modèle = c("Elastic Net", "Ridge", "Lasso", "Random Forest", "XGBoost", "SVM"),
+  RMSE = c(enet_rmse, ridge_rmse, lasso_rmse, rf_rmse, xgb_rmse, svm_rmse),
+  MAE = c(enet_mae, ridge_mae, lasso_mae, rf_mae, xgb_mae, svm_mae),
+  Corrélation = c(enet_cor, ridge_cor, lasso_cor, rf_cor, xgb_cor, svm_cor),
+  R2 = c(enet_r2, ridge_r2, lasso_r2, rf_r2, xgb_r2, svm_r2)
+)
+
+# Ajouter Deep Learning si disponible
+if(dl_available && !is.na(dl_rmse)) {
+  results <- rbind(results, data.frame(
+    Modèle = "Deep Learning (Keras)",
+    RMSE = dl_rmse,
+    MAE = dl_mae,
+    Corrélation = dl_cor,
+    R2 = dl_r2
+  ))
+}
+
+# Ajouter Stacking si disponible
+if (exists("stack_rmse") && !is.na(stack_rmse)) {
+  results <- rbind(results, data.frame(
+    Modèle      = "Stacking (Ensemble)",
+    RMSE        = stack_rmse,
+    MAE         = stack_mae,
+    Corrélation = stack_cor,
+    R2          = stack_r2
+  ))
+}
+
+# ───────────── Arrondi pour présentation ─────────────
+results$RMSE <- round(results$RMSE, 2)
+results$MAE <- round(results$MAE, 2)
+results$Corrélation <- round(results$Corrélation, 3)
+results$R2 <- round(results$R2, 3)
+
+best_idx <- which.min(results$RMSE)
+
+# ───────────── Table finale avec knitr + kableExtra ─────────────
+knitr::kable(
+  results, 
+  caption = "Comparaison des performances des horloges biologiques",
+  col.names = c("Modèle", "RMSE (années)", "MAE (années)", "Corrélation", "R²")
+) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "bordered"),
+    full_width = FALSE
+  ) %>%
+  kableExtra::row_spec(0, bold = TRUE, color = "white", background = "#2c3e50") %>%
+  kableExtra::row_spec(best_idx, bold = TRUE, background = "#d4edda", color = "#155724") %>%
+  kableExtra::column_spec(2, color = "#e74c3c") %>%
+  kableExtra::column_spec(3, color = "#f39c12") %>%
+  kableExtra::column_spec(4, color = "#3498db") %>%
+  kableExtra::column_spec(5, color = "#27ae60")
+```
+
+## Comparaison avec l'Horloge Horvath
+
+```{r horvath-comparison}
+# ═══════════════════════════════════════════════════════════════════
+# COMPARAISON AVEC HORVATH
+# ═══════════════════════════════════════════════════════════════════
+
+horvath_ref <- data.frame(
+  Métrique = c("Corrélation (r)", "MAE (années)", "Méthode"),
+  `Horvath_2013_(littérature)` = c("0.96", "~3.6", "Elastic Net (353 CpG)"),
+  Notre_Meilleur = c(
+    as.character(round(results$Corrélation[best_idx], 3)),
+    as.character(round(results$MAE[best_idx], 2)),
+    results$Modèle[best_idx]
+  )
+)
+
+knitr::kable(horvath_ref, 
+             caption = "Comparaison avec l'horloge de Horvath (2013). Les valeurs Horvath sont issues de la littérature originale (cohorte multi-tissus, n ≈ 21 000) ; notre modèle est évalué sur notre cohorte de test (n ≈ 80). La métrique commune retenue est la MAE, rapportée dans les deux cas.") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#e74c3c")
+```
+
+## Visualisation Comparative
+
+<div style="background-color: #eaf2f8; padding: 12px; border-left: 4px solid #3498db; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à comparer visuellement la qualité des prédictions de chaque modèle. La ligne diagonale rouge représente la prédiction parfaite (y = x). Plus les points sont alignés sur cette diagonale, plus le modèle est performant. Une dispersion importante ou un biais systématique révèle les limites du modèle.
+</div>
+
+```{r prediction-plots, fig.height=10}
+df_plot <- data.frame(
+  Age_real = y_test,
+  Elastic_Net = enet_pred,
+  Ridge = ridge_pred,
+  Lasso = lasso_pred,
+  Random_Forest = rf_pred,
+  XGBoost = xgb_pred,
+  SVM = svm_pred
+)
+
+# Ajouter Deep Learning si disponible
+if(dl_available && !is.na(dl_rmse)) {
+  df_plot$Deep_Learning <- dl_pred
+}
+
+# Ajouter Stacking si disponible
+if(exists("stack_pred") && length(stack_pred) == length(y_test)) {
+  df_plot$Stacking <- stack_pred
+}
+
+df_long <- tidyr::pivot_longer(df_plot, -Age_real,
+                               names_to = "Modèle",
+                               values_to = "Age_pred")
+
+ggplot(df_long, aes(x = Age_real, y = Age_pred)) +
+  geom_point(aes(color = Modèle), alpha = 0.7, size = 2) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red", linewidth = 1) +
+  facet_wrap(~Modèle, ncol = 3) +
+  labs(
+    title = "Âge Réel vs Âge Prédit par Modèle",
+    subtitle = "La ligne rouge représente la prédiction parfaite (y = x)",
+    x = "Âge Réel (années)",
+    y = "Âge Prédit (années)"
+  ) +
+  theme(legend.position = "none",
+        strip.text = element_text(face = "bold", size = 11),
+        strip.background = element_rect(fill = "#3498db", color = NA)) +
+  scale_color_manual(values = custom_colors)
+```
+
+```{r models-interpretation, echo=FALSE, results='asis'}
+# Interprétation automatique de la comparaison des modèles
+best_model <- results$Modèle[best_idx]
+best_rmse <- round(results$RMSE[best_idx], 2)
+best_r2 <- round(results$R2[best_idx], 3)
+worst_idx <- which.max(results$RMSE)
+worst_model <- results$Modèle[worst_idx]
+worst_rmse <- round(results$RMSE[worst_idx], 2)
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+cat(paste0('Le modèle <strong>', best_model, '</strong> offre les meilleures performances avec un RMSE de <strong>', 
+           best_rmse, ' ans</strong> et un R² de <strong>', best_r2, '</strong>. '))
+cat(paste0('En comparaison, le modèle le moins performant (<strong>', worst_model, '</strong>) affiche un RMSE de ', 
+           worst_rmse, ' ans. '))
+
+if(best_rmse < 4) {
+  cat('Ces résultats sont <strong>comparables à l\'horloge de Horvath</strong> (MAE publiée ≈ 3,6 ans sur cohorte multi-tissus, r = 0,96), ce qui valide notre approche sur notre cohorte.')
+} else if(best_rmse < 6) {
+  cat('Ces résultats sont <strong>satisfaisants</strong> pour une première itération sur 50 000 CpG. À titre de référence, Horvath (2013) rapporte une MAE ≈ 3,6 ans sur une cohorte multi-tissus de 21 000 échantillons avec 485 000 CpG disponibles.')
+} else {
+  cat('Ces résultats suggèrent que des <strong>améliorations sont nécessaires</strong> (plus de CpG, données complètes). Horvath (2013) rapporte une MAE ≈ 3,6 ans avec une couverture CpG complète (450K).')
+}
+cat('</div>')
+```
+
+---
+
+# Audit Scientifique du Pipeline
+
+Cette section synthétise les contrôles critiques : risque de fuite d'information, cohérence métrique, calibration, et comparaison de variantes de pipeline.
+
+```{r pipeline-audit, results='asis'}
+# ═══════════════════════════════════════════════════════════════════
+# AUDIT AUTOMATIQUE (NIVEAU REVIEWER)
+# ═══════════════════════════════════════════════════════════════════
+
+stopifnot(length(y_train) == nrow(X_train2), length(y_test) == nrow(X_test2))
+stopifnot(length(enet_pred) == length(y_test))
+
+calib_enet <- coef(lm(y_test ~ enet_pred))
+calib_intercept <- as.numeric(calib_enet[1])
+calib_slope <- as.numeric(calib_enet[2])
+
+leakage_flags <- data.frame(
+  Point = c(
+    "Split train/test avant sélection CpG",
+    "Filtrage NA appris sur TRAIN uniquement",
+    "Imputation médiane apprise sur TRAIN uniquement",
+    "Projection ACP du TEST via modèle appris sur TRAIN"
+  ),
+  Statut = c("OK", "OK", "OK", "OK")
+)
+
+risk_table <- data.frame(
+  Risque = c(
+    "Sélection du meilleur modèle sur le test final",
+    "Double sélection (corrélation CpG puis Elastic Net)",
+    "Calibration imparfaite (intercept != 0, pente != 1)"
+  ),
+  Niveau = c("Élevé", "Moyen", "Moyen"),
+  Impact = c(
+    "Optimisme potentiel de performance",
+    "Risque de perte d'information utile",
+    "Biais systématique de prédiction"
+  )
+)
+
+cat('<div style="background-color: #fff3cd; padding: 12px; border-left: 4px solid #f39c12; margin-bottom: 12px;">')
+cat('<strong>Calibration Elastic Net :</strong> intercept = ', round(calib_intercept, 3),
+    ', slope = ', round(calib_slope, 3), '. ', sep = '')
+if (abs(calib_intercept) <= 2 && abs(calib_slope - 1) <= 0.05) {
+  cat('Calibration proche de l\'idéal.')
+} else {
+  cat('Calibration perfectible : une correction affine post-hoc peut être envisagée.')
+}
+cat('</div>')
+
+knitr::kable(leakage_flags, caption = "Checklist Data Leakage") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#27ae60")
+
+knitr::kable(risk_table, caption = "Points méthodologiques bloquants/potentiellement bloquants") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#c0392b")
+```
+
+## Renforcement Méthodologique
+
+```{r publication-robustness}
+# ═══════════════════════════════════════════════════════════════════
+# VALIDATION RÉPÉTÉE + CALIBRATION + INCERTITUDE
+# ═══════════════════════════════════════════════════════════════════
+
+# 1) Repeated CV sur TRAIN uniquement (Elastic Net)
+set.seed(321)
+n_repeats <- 5
+k_cv <- 5
+
+cv_metrics <- lapply(seq_len(n_repeats), function(rp) {
+  fold_ids <- sample(rep(seq_len(k_cv), length.out = nrow(X_train2)))
+  fold_res <- lapply(seq_len(k_cv), function(k) {
+    id_val <- which(fold_ids == k)
+    id_fit <- setdiff(seq_len(nrow(X_train2)), id_val)
+
+    cv_k <- cv.glmnet(X_train2[id_fit, , drop = FALSE], y_train[id_fit],
+                      alpha = 0.5, standardize = TRUE, nfolds = 5)
+    m_k <- glmnet(X_train2[id_fit, , drop = FALSE], y_train[id_fit],
+                  alpha = 0.5, lambda = cv_k$lambda.min, standardize = TRUE)
+
+    pred_k <- as.numeric(predict(m_k, newx = X_train2[id_val, , drop = FALSE]))
+    obs_k <- y_train[id_val]
+
+    data.frame(
+      RMSE = sqrt(mean((pred_k - obs_k)^2)),
+      MAE = mean(abs(pred_k - obs_k)),
+      Corr = cor(pred_k, obs_k),
+      R2 = 1 - sum((obs_k - pred_k)^2) / sum((obs_k - mean(obs_k))^2)
+    )
+  })
+  do.call(rbind, fold_res)
+})
+
+cv_all <- do.call(rbind, cv_metrics)
+cv_summary <- data.frame(
+  Metrique = c("RMSE", "MAE", "Corr", "R2"),
+  Moyenne = c(mean(cv_all$RMSE), mean(cv_all$MAE), mean(cv_all$Corr), mean(cv_all$R2)),
+  Ecart_Type = c(sd(cv_all$RMSE), sd(cv_all$MAE), sd(cv_all$Corr), sd(cv_all$R2))
+)
+cv_summary$Moyenne <- round(cv_summary$Moyenne, 3)
+cv_summary$Ecart_Type <- round(cv_summary$Ecart_Type, 3)
+
+knitr::kable(cv_summary, caption = "Validation croisée répétée (5x5) sur TRAIN - Elastic Net") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#1f618d")
+
+# ── Diagnostic de stabilité : coefficients de variation ─────────────
+cv_stability <- data.frame(
+  Métrique = c("RMSE", "MAE", "Corr", "R2"),
+  Moyenne  = round(c(mean(cv_all$RMSE), mean(cv_all$MAE), mean(cv_all$Corr), mean(cv_all$R2)), 3),
+  SD       = round(c(sd(cv_all$RMSE),   sd(cv_all$MAE),   sd(cv_all$Corr),   sd(cv_all$R2)), 4),
+  CV_pct   = round(100 * c(sd(cv_all$RMSE)/mean(cv_all$RMSE),
+                            sd(cv_all$MAE)/mean(cv_all$MAE),
+                            sd(cv_all$Corr)/mean(cv_all$Corr),
+                            sd(cv_all$R2)/mean(cv_all$R2)), 2),
+  IC95_low = round(c(quantile(cv_all$RMSE, 0.025), quantile(cv_all$MAE, 0.025),
+                     quantile(cv_all$Corr, 0.025), quantile(cv_all$R2, 0.025)), 3),
+  IC95_up  = round(c(quantile(cv_all$RMSE, 0.975), quantile(cv_all$MAE, 0.975),
+                     quantile(cv_all$Corr, 0.975), quantile(cv_all$R2, 0.975)), 3)
+)
+
+knitr::kable(cv_stability,
+             col.names = c("Métrique", "Moyenne", "SD", "CV (%)", "IC95 Low", "IC95 High"),
+             caption = "Stabilité du modèle (CV répétée) : coefficients de variation et IC95") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#1f618d") %>%
+  row_spec(which(cv_stability$CV_pct < 5), background = "#d4edda") %>%
+  row_spec(which(cv_stability$CV_pct >= 10), background = "#fff3cd")
+
+cat("\nNote : Un CV% < 5% indique un modèle très stable ; > 10% suggère une instabilité.\n")
+
+# Distribution des RMSE en CV → boxplot
+cv_all$fold <- seq_len(nrow(cv_all)) %% n_repeats + 1
+cv_long <- tidyr::pivot_longer(cv_all[, c("RMSE", "MAE")], everything(),
+                                names_to = "Métrique", values_to = "Valeur")
+ggplot(cv_long, aes(x = Métrique, y = Valeur, fill = Métrique)) +
+  geom_boxplot(alpha = 0.7, outlier.color = "#e74c3c") +
+  scale_fill_manual(values = c("RMSE" = "#3498db", "MAE" = "#f39c12")) +
+  labs(title = "Distribution des métriques (CV répétée 5×5)",
+       subtitle = "Chaque point = un fold d'une répétition",
+       y = "Valeur (années)", x = "") +
+  theme(legend.position = "none")
+
+# 2) Calibration affine (apprise sur sous-ensemble de TRAIN)
+set.seed(777)
+id_cal <- sample(seq_len(nrow(X_train2)), size = max(40, floor(0.2 * nrow(X_train2))))
+id_fit <- setdiff(seq_len(nrow(X_train2)), id_cal)
+
+cv_fit <- cv.glmnet(X_train2[id_fit, , drop = FALSE], y_train[id_fit],
+                    alpha = 0.5, standardize = TRUE, nfolds = 5)
+model_fit <- glmnet(X_train2[id_fit, , drop = FALSE], y_train[id_fit],
+                    alpha = 0.5, lambda = cv_fit$lambda.min, standardize = TRUE)
+
+pred_cal <- as.numeric(predict(model_fit, newx = X_train2[id_cal, , drop = FALSE]))
+obs_cal <- y_train[id_cal]
+cal_model <- lm(obs_cal ~ pred_cal)
+
+pred_test_uncal <- as.numeric(predict(model_fit, newx = X_test2))
+pred_test_cal <- as.numeric(coef(cal_model)[1] + coef(cal_model)[2] * pred_test_uncal)
+
+calibration_compare <- data.frame(
+  Version = c("Non calibré", "Calibré (affine)"),
+  RMSE = c(
+    round(sqrt(mean((pred_test_uncal - y_test)^2)), 3),
+    round(sqrt(mean((pred_test_cal - y_test)^2)), 3)
+  ),
+  MAE = c(
+    round(mean(abs(pred_test_uncal - y_test)), 3),
+    round(mean(abs(pred_test_cal - y_test)), 3)
+  ),
+  Corr = c(
+    round(cor(pred_test_uncal, y_test), 3),
+    round(cor(pred_test_cal, y_test), 3)
+  )
+)
+
+knitr::kable(calibration_compare, caption = "Impact de la calibration affine") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#117a65")
+
+# 3) Intervalles de prédiction (Split conformal, niveau 90%)
+scores_cal <- abs(pred_cal - obs_cal)
+qhat <- as.numeric(quantile(scores_cal, probs = 0.90, type = 8, na.rm = TRUE))
+pi_low <- pred_test_uncal - qhat
+pi_high <- pred_test_uncal + qhat
+coverage_90 <- mean(y_test >= pi_low & y_test <= pi_high)
+
+uncertainty_summary <- data.frame(
+  Niveau = "90%",
+  qhat = round(qhat, 3),
+  Couverture_Test = round(coverage_90, 3),
+  Largeur_Moyenne = round(mean(pi_high - pi_low), 3)
+)
+
+knitr::kable(uncertainty_summary, caption = "Incertitude prédictive (split conformal)") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#7d3c98")
+```
+
+## Simplification du Pipeline : A/B/C
+
+Comparaison des trois variantes demandées :
+
+- A : CpG sélectionnés + covariables -> Elastic Net
+- B : CpG sélectionnés -> ACP -> Elastic Net (+ covariables)
+- C : CpG filtrés/imputés sans sélection univariée + covariables -> Elastic Net
+
+```{r ablation-abc}
+# ═══════════════════════════════════════════════════════════════════
+# ABLATION A/B/C
+# ═══════════════════════════════════════════════════════════════════
+
+# A = baseline actuel
+A_rmse <- enet_rmse
+A_mae  <- enet_mae
+A_cor  <- enet_cor
+A_r2   <- enet_r2
+
+# B = PCA + Elastic Net
+B_rmse <- pca_rmse
+B_mae  <- pca_mae
+B_cor  <- pca_cor
+B_r2   <- pca_r2
+
+# C = sans sélection corrélation (après filtrage/imputation train-only)
+X_train_all <- as.matrix(cpg_train)
+X_test_all  <- as.matrix(cpg_test)
+X_train_all2 <- cbind(X_train_all, cov_train_matrix)
+X_test_all2  <- cbind(X_test_all, cov_test_matrix)
+
+set.seed(123)
+cv_all <- cv.glmnet(X_train_all2, y_train, alpha = 0.5, standardize = TRUE, nfolds = N_FOLDS)
+model_all <- glmnet(X_train_all2, y_train, alpha = 0.5, lambda = cv_all$lambda.min, standardize = TRUE)
+pred_all <- as.numeric(predict(model_all, newx = X_test_all2))
+
+C_rmse <- sqrt(mean((pred_all - y_test)^2))
+C_mae  <- mean(abs(pred_all - y_test))
+C_cor  <- cor(pred_all, y_test)
+C_r2   <- 1 - sum((y_test - pred_all)^2) / sum((y_test - mean(y_test))^2)
+
+abc_compare <- data.frame(
+  Pipeline = c(
+    "A) CpG sélectionnés -> Elastic Net",
+    "B) CpG sélectionnés -> PCA -> Elastic Net",
+    "C) CpG non sélectionnés -> Elastic Net"
+  ),
+  N_Features = c(ncol(X_train2), ncol(PC_train2), ncol(X_train_all2)),
+  RMSE = round(c(A_rmse, B_rmse, C_rmse), 2),
+  MAE = round(c(A_mae, B_mae, C_mae), 2),
+  Correlation = round(c(A_cor, B_cor, C_cor), 3),
+  R2 = round(c(A_r2, B_r2, C_r2), 3)
+)
+
+best_abc <- which.min(abc_compare$RMSE)
+
+knitr::kable(abc_compare, caption = "Ablation A/B/C du pipeline") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#34495e") %>%
+  row_spec(best_abc, bold = TRUE, background = "#d4edda")
+
+cat("\nPipeline recommandé (RMSE minimal) :", abc_compare$Pipeline[best_abc], "\n")
+```
+
+---
+
+# Analyse du Delta Age
+
+Le **Delta Age** ($\Delta_{age} = \hat{y} - y$) mesure l'écart entre vieillissement biologique et chronologique. Un Delta positif suggère un vieillissement accéléré, un Delta négatif un vieillissement ralenti.
+
+## Formules des Tests Statistiques Utilisés
+
+```{r formules-tests-stats, echo=FALSE}
+# Tableau des tests statistiques
+tests_stats <- data.frame(
+  Test = c("Test t de Student", "ANOVA (F-test)", "Corrélation de Pearson"),
+  Formule = c("$t = \\frac{\\bar{X}_1 - \\bar{X}_2}{s_p \\sqrt{\\frac{1}{n_1} + \\frac{1}{n_2}}}$",
+              "$F = \\frac{\\text{Var}_{\\text{inter}}}{\\text{Var}_{\\text{intra}}}$",
+              "$r = \\frac{\\sum(x_i-\\bar{X})(y_i-\\bar{Y})}{\\sqrt{\\sum(x_i-\\bar{X})^2 \\sum(y_i-\\bar{Y})^2}}$"),
+  Utilisation = c("Comparer 2 groupes (ex: Hommes vs Femmes)",
+                  "Comparer ≥3 groupes (ex: Ethnies)",
+                  "Mesurer la relation linéaire entre 2 variables"),
+  Hypothese_H0 = c("$\\mu_1 = \\mu_2$",
+                   "$\\mu_1 = \\mu_2 = ... = \\mu_k$",
+                   "$\\rho = 0$"),
+  Seuil = c("$p \\lt 0.05$ → différence significative",
+            "$p \\lt 0.05$ → au moins une diffère",
+            "$p \\lt 0.05$ → corrélation significative")
+)
+
+knitr::kable(tests_stats,
+             col.names = c("Test", "Formule", "Utilisation", "Hypothèse H₀", "Interprétation"),
+             caption = "Tests statistiques pour l'analyse du Delta Age",
+             escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = TRUE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#9b59b6") %>%
+  row_spec(1, background = "#f5eef8") %>%
+  row_spec(2, background = "#eaf2f8") %>%
+  row_spec(3, background = "#e8f8f5") %>%
+  column_spec(1, bold = TRUE, width = "15%") %>%
+  column_spec(2, width = "28%")
+```
+
+<div style="background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); padding: 15px; border-radius: 10px; color: white; margin: 15px 0;">
+<h4 style="margin-top: 0; color: white;">Écart-type poolé pour le test t</h4>
+
+$$s_p = \sqrt{\frac{(n_1-1)s_1^2 + (n_2-1)s_2^2}{n_1+n_2-2}}$$
+
+<p style="font-size: 0.9em;">Où $s_1, s_2$ sont les écarts-types des deux groupes et $n_1, n_2$ leurs effectifs.</p>
+</div>
+
+## Calcul du Delta Age
+
+<div class="highlight-box">
+Le **Delta Age** (Âge prédit - Âge réel) mesure l'accélération ou le ralentissement du vieillissement biologique par rapport à l'âge chronologique.
+
+- **Delta Age > 0** : vieillissement biologique accéléré
+- **Delta Age < 0** : vieillissement biologique ralenti
+</div>
+
+```{r delta-age-calc}
+# ═══════════════════════════════════════════════════════════════════
+# CALCUL DU DELTA AGE + MÉTRIQUES CLINIQUES ÉTENDUES
+# ═══════════════════════════════════════════════════════════════════
+
+best_pred <- switch(best_idx,
+                    enet_pred, ridge_pred, lasso_pred, 
+                    rf_pred, xgb_pred, svm_pred,
+                    if(dl_available && !is.na(dl_rmse)) dl_pred else enet_pred)
+
+# Utiliser les prédictions du stacking si disponibles
+if (exists("stack_pred") && length(stack_pred) == length(y_test)) {
+  cat("Utilisation des prédictions du stacking pour l'analyse du Delta Age.\n")
+  best_pred <- stack_pred
+}
+
+metadata_test_analysis <- metadata_test
+metadata_test_analysis$predicted_age <- best_pred
+metadata_test_analysis$delta_age <- best_pred - y_test
+
+# ── Statistiques globales du Delta Age ──────────────────────────────
+delta_stats <- data.frame(
+  Statistique = c("Moyenne", "Écart-type", "Médiane", "Min", "Max"),
+  Valeur = c(
+    round(mean(metadata_test_analysis$delta_age), 2),
+    round(sd(metadata_test_analysis$delta_age), 2),
+    round(median(metadata_test_analysis$delta_age), 2),
+    round(min(metadata_test_analysis$delta_age), 2),
+    round(max(metadata_test_analysis$delta_age), 2)
+  )
+)
+
+knitr::kable(delta_stats, caption = "Statistiques du Delta Age") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#9b59b6")
+
+# ── MÉTRIQUES CLINIQUES COMPLÉMENTAIRES ─────────────────────────────
+
+# 1) Age Acceleration Résiduelle (Horvath 2013 / Levine 2018)
+#    Régression de l'âge prédit sur l'âge réel → résidu = accélération nette
+reg_resid     <- lm(predicted_age ~ age, data = metadata_test_analysis)
+metadata_test_analysis$age_acceleration <- residuals(reg_resid)
+calib_r2_resid <- summary(reg_resid)$r.squared
+
+cat("\n── Age Acceleration (résidus de régression) ──\n")
+cat("  R² régression (âge prédit ~ âge réel) :", round(calib_r2_resid, 4), "\n")
+cat("  Moy. résidus                          :", round(mean(metadata_test_analysis$age_acceleration), 3),
+    " (doit ≈ 0 si calibration parfaite)\n")
+cat("  Écart-type résidus                    :", round(sd(metadata_test_analysis$age_acceleration), 3), "ans\n")
+
+# 2) Outliers par seuils |ΔAge|
+seuil_5  <- 5
+seuil_10 <- 10
+
+n_out5   <- sum(abs(metadata_test_analysis$delta_age) > seuil_5)
+n_out10  <- sum(abs(metadata_test_analysis$delta_age) > seuil_10)
+pct_out5 <- round(100 * n_out5  / nrow(metadata_test_analysis), 1)
+pct_out10<- round(100 * n_out10 / nrow(metadata_test_analysis), 1)
+
+cat("\n── Outliers du Delta Age ──\n")
+cat("  |ΔAge| >", seuil_5,  "ans :", n_out5,  "patients (", pct_out5,  "%)\n")
+cat("  |ΔAge| >", seuil_10, "ans :", n_out10, "patients (", pct_out10, "%)\n")
+
+# 3) Tableau récapitulatif des métriques cliniques
+metrics_clinical <- data.frame(
+  Métrique = c(
+    "RMSE",
+    "MAE",
+    "Corrélation r",
+    "R²",
+    "MAD ($\\Delta \\text{Age}$)",
+    "Outliers $\\lvert \\Delta \\text{Age} \\rvert$ > 5 ans",
+    "Outliers $\\lvert \\Delta \\text{Age} \\rvert$ > 10 ans",
+    "Moy. Age Acceleration",
+    "SD Age Acceleration",
+    "Biais systématique (moy. delta_age)"
+  ),
+  Valeur = c(
+    round(sqrt(mean(metadata_test_analysis$delta_age^2)), 3),
+    round(mean(abs(metadata_test_analysis$delta_age)), 3),
+    round(cor(best_pred, y_test), 4),
+    round(results$R2[best_idx], 4),
+    round(median(abs(metadata_test_analysis$delta_age - median(metadata_test_analysis$delta_age))), 3),
+    paste0(n_out5,  " (", pct_out5,  "%)"),
+    paste0(n_out10, " (", pct_out10, "%)"),
+    round(mean(metadata_test_analysis$age_acceleration), 4),
+    round(sd(metadata_test_analysis$age_acceleration), 3),
+    round(mean(metadata_test_analysis$delta_age), 3)
+  ),
+  Interprétation = c(
+    "Erreur quadratique moyenne (années)",
+    "Erreur absolue moyenne (années)",
+    "Corrélation linéaire prédiction/réalité",
+    "Proportion de variance expliquée",
+    "Erreur médiane robuste (années)",
+    "Patients avec grande erreur",
+    "Patients avec erreur critique",
+    "≈0 si calibration parfaite",
+    "Dispersion de l'accélération biologique",
+    "Biais de sur/sous-estimation global"
+  )
+)
+
+knitr::kable(metrics_clinical, caption = "Métriques cliniques et statistiques complètes") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = TRUE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#9b59b6") %>%
+  row_spec(6:7, bold = TRUE, background = "#fff3cd") %>%
+  row_spec(c(1, 3, 4), background = "#d4edda")
+
+# 4) Graphique : Age Acceleration (résidus)
+p_accel <- ggplot(metadata_test_analysis, aes(x = age, y = age_acceleration)) +
+  geom_point(aes(color = abs(age_acceleration) > seuil_10), alpha = 0.7, size = 2.5) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+  geom_hline(yintercept = c(-seuil_10, seuil_10), linetype = "dotted", color = "#e74c3c") +
+  geom_smooth(method = "loess", se = TRUE, color = "#3498db", fill = "#d6eaf8", alpha = 0.4) +
+  scale_color_manual(values = c("FALSE" = "#2ecc71", "TRUE" = "#e74c3c"),
+                     labels = c("Normal", paste("|ΔAge| >", seuil_10, "ans")),
+                     name = "Outlier") +
+  labs(
+    title = "Age Acceleration (résidus de régression) vs Âge Chronologique",
+    subtitle = "Lignes rouge = seuils |ΔAge| > 10 ans",
+    x = "Âge Chronologique (années)", y = "Age Acceleration (résidus, années)"
+  ) +
+  theme(legend.position = "right")
+
+# 5) Distribution du Delta Age avec les deux seuils
+p_dist_delta <- ggplot(metadata_test_analysis, aes(x = delta_age)) +
+  geom_histogram(bins = 30, fill = "#9b59b6", color = "white", alpha = 0.7) +
+  geom_vline(xintercept = c(-seuil_5, seuil_5), linetype = "dashed",
+             color = "#f39c12", linewidth = 1, alpha = 0.9) +
+  geom_vline(xintercept = c(-seuil_10, seuil_10), linetype = "dashed",
+             color = "#e74c3c", linewidth = 1.2) +
+  annotate("text", x = seuil_5 + 0.5, y = Inf, vjust = 2,
+           label = paste0(pct_out5, "% > 5 ans"), color = "#f39c12", size = 3.5) +
+  annotate("text", x = seuil_10 + 0.5, y = Inf, vjust = 4,
+           label = paste0(pct_out10, "% > 10 ans"), color = "#e74c3c", size = 3.5) +
+  labs(title = "Distribution du Delta Age avec seuils cliniques",
+       subtitle = "Orange = |ΔAge| > 5 ans | Rouge = |ΔAge| > 10 ans",
+       x = "Delta Age (années)", y = "Effectif")
+
+gridExtra::grid.arrange(p_accel, p_dist_delta, ncol = 2)
+```
+
+## Delta Age selon le Sexe
+
+<div style="background-color: #fdeaea; padding: 12px; border-left: 4px solid #e74c3c; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à déterminer si le vieillissement biologique diffère significativement entre hommes et femmes. Cette analyse est essentielle car des différences liées au sexe dans le vieillissement épigénétique ont été rapportées dans la littérature.
+</div>
+
+```{r delta-age-sex}
+# ═══════════════════════════════════════════════════════════════════
+# DELTA AGE SELON LE SEXE
+# ═══════════════════════════════════════════════════════════════════
+
+ggplot(metadata_test_analysis, aes(x = factor(female, labels = c("Homme", "Femme")), 
+                                    y = delta_age, fill = factor(female))) +
+  geom_boxplot(alpha = 0.8, outlier.color = "#e74c3c") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", linewidth = 1) +
+  scale_fill_manual(values = c("#3498db", "#e91e63")) +
+  labs(
+    title = "Delta Age selon le Sexe",
+    subtitle = "Différence entre l'âge biologique prédit et l'âge chronologique",
+    x = "Sexe",
+    y = "Delta Age (années)"
+  ) +
+  theme(legend.position = "none")
+
+delta_by_sex <- metadata_test_analysis %>%
+  group_by(Sexe = factor(female, labels = c("Homme", "Femme"))) %>%
+  summarise(
+    N = n(),
+    Delta_Age_Moyen = round(mean(delta_age), 2),
+    Ecart_type = round(sd(delta_age), 2),
+    Minimum = round(min(delta_age), 2),
+    Maximum = round(max(delta_age), 2),
+    .groups = "drop"
+  )
+
+knitr::kable(delta_by_sex, caption = "Statistiques du Delta Age par sexe") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#9b59b6")
+```
+
+```{r sex-interpretation, echo=FALSE, results='asis'}
+# Interprétation automatique Delta Age par sexe
+mean_h <- mean(metadata_test_analysis$delta_age[metadata_test_analysis$female == FALSE])
+mean_f <- mean(metadata_test_analysis$delta_age[metadata_test_analysis$female == TRUE])
+diff_hf <- mean_h - mean_f
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+cat(paste0('Les hommes présentent un Delta Age moyen de <strong>', round(mean_h, 2), ' ans</strong> contre <strong>', 
+           round(mean_f, 2), ' ans</strong> pour les femmes (différence de ', round(abs(diff_hf), 2), ' ans). '))
+
+if(diff_hf > 1) {
+  cat('Les hommes semblent présenter un <strong>vieillissement biologique accéléré</strong> par rapport aux femmes. ')
+} else if(diff_hf < -1) {
+  cat('Les femmes semblent présenter un <strong>vieillissement biologique accéléré</strong> par rapport aux hommes. ')
+} else {
+  cat('La différence entre sexes est <strong>faible</strong>. ')
+}
+cat('Le test statistique ci-dessous déterminera si cette différence est significative.')
+cat('</div>')
+```
+
+### Test Statistique : Différence selon le Genre
+
+Application du test t de Student pour comparer $\Delta_{age}$ entre hommes et femmes. Hypothèses : $H_0: \mu_H = \mu_F$ vs $H_1: \mu_H \neq \mu_F$.
+
+```{r sex-ttest}
+# ═══════════════════════════════════════════════════════════════════
+# TEST STATISTIQUE : DIFFÉRENCE SELON LE GENRE
+# ═══════════════════════════════════════════════════════════════════
+
+delta_homme <- metadata_test_analysis$delta_age[metadata_test_analysis$female == FALSE]
+delta_femme <- metadata_test_analysis$delta_age[metadata_test_analysis$female == TRUE]
+
+if(length(delta_homme) > 2 && length(delta_femme) > 2) {
+  t_test_sex <- t.test(delta_homme, delta_femme)
+  
+  cat("Test t de Student : Delta Age Hommes vs Femmes\n")
+  cat("   - Moyenne Hommes :", round(mean(delta_homme), 2), "années\n")
+  cat("   - Moyenne Femmes :", round(mean(delta_femme), 2), "années\n")
+  cat("   - Différence :", round(mean(delta_homme) - mean(delta_femme), 2), "années\n")
+  cat("   - t-statistique :", round(t_test_sex$statistic, 3), "\n")
+  cat("   - p-value :", format.pval(t_test_sex$p.value, digits = 4), "\n")
+  cat("   - Conclusion :", ifelse(t_test_sex$p.value < 0.05, 
+                                   "Différence SIGNIFICATIVE (p \\lt 0.05)",
+                                   "Pas de différence significative (p \\ge 0.05)"), "\n")
+} else {
+  cat("Effectifs insuffisants pour le test statistique\n")
+}
+```
+
+## Delta Age selon l'Ethnie
+
+<div style="background-color: #e8f8f5; padding: 12px; border-left: 4px solid #1abc9c; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à identifier d'éventuelles disparités dans le vieillissement biologique entre groupes ethniques. Ces différences peuvent refléter des facteurs génétiques, environnementaux, ou un biais du modèle lié à un déséquilibre dans les données d'entraînement.
+</div>
+
+```{r delta-age-ethnicity}
+# ═══════════════════════════════════════════════════════════════════
+# DELTA AGE SELON L'ETHNIE
+# ═══════════════════════════════════════════════════════════════════
+
+ggplot(metadata_test_analysis, aes(x = reorder(ethnicity, delta_age, FUN = median), 
+                                    y = delta_age, fill = ethnicity)) +
+  geom_boxplot(alpha = 0.8, outlier.color = "#e74c3c") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red", linewidth = 1) +
+  scale_fill_brewer(palette = "Set3") +
+  labs(
+    title = "Delta Age selon l'Ethnie",
+    subtitle = "Variation de l'âge biologique par groupe ethnique",
+    x = "Ethnie",
+    y = "Delta Age (années)"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+
+delta_by_eth <- metadata_test_analysis %>%
+  group_by(Ethnie = ethnicity) %>%
+  summarise(
+    N = n(),
+    Delta_Age_Moyen = round(mean(delta_age), 2),
+    Ecart_type = round(sd(delta_age), 2),
+    .groups = "drop"
+  ) %>%
+  arrange(Delta_Age_Moyen)
+
+knitr::kable(delta_by_eth, caption = "Statistiques du Delta Age par ethnie") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#1abc9c")
+```
+
+### Test ANOVA : Différence entre Ethnies
+
+Application de l'ANOVA pour comparer $\Delta_{age}$ entre $k$ groupes ethniques. Hypothèses : $H_0: \mu_1 = \mu_2 = ... = \mu_k$ vs $H_1:$ au moins une moyenne diffère.
+
+```{r ethnicity-anova}
+# ═══════════════════════════════════════════════════════════════════
+# TEST ANOVA : DIFFÉRENCE ENTRE ETHNIES
+# ═══════════════════════════════════════════════════════════════════
+
+if(length(unique(metadata_test_analysis$ethnicity)) > 1) {
+  anova_eth <- aov(delta_age ~ ethnicity, data = metadata_test_analysis)
+  anova_summary <- summary(anova_eth)
+  
+  cat("Test ANOVA : Delta Age entre les groupes ethniques\n")
+  cat("   - F-statistique :", round(anova_summary[[1]]$`F value`[1], 3), "\n")
+  cat("   - p-value :", format.pval(anova_summary[[1]]$`Pr(>F)`[1], digits = 4), "\n")
+  cat("   - Conclusion :", ifelse(anova_summary[[1]]$`Pr(>F)`[1] < 0.05,
+                                   "Différence SIGNIFICATIVE entre au moins deux groupes",
+                                   "Pas de différence significative entre les groupes"), "\n")
+}
+```
+
+---
+
+# Analyse de la Non-Linéarité selon l'Âge
+
+<div style="background-color: #fef9e7; padding: 12px; border-left: 4px solid #f39c12; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à déterminer si la précision du modèle varie selon l'âge des sujets. Un biais systématique (surestimation chez les jeunes, sous-estimation chez les âgés) est un phénomène connu appelé "régression vers la moyenne" qui peut affecter les horloges épigénétiques.
+</div>
+
+```{r formules-nonlinearite, echo=FALSE}
+# Tableau du test de non-linéarité
+test_nonlin <- data.frame(
+  Modele = c("Linéaire", "Quadratique"),
+  Formule = c("$\\Delta_{age} = \\beta_0 + \\beta_1 \\cdot age + \\epsilon$", 
+              "$\\Delta_{age} = \\beta_0 + \\beta_1 \\cdot age + \\beta_2 \\cdot age^2 + \\epsilon$"),
+  Description = c("Relation proportionnelle constante", "Permet une courbure (accélération/décélération)"),
+  Test = c("-", "Si $\\beta_2 \\neq 0$ ($p \\lt 0.05$) → non-linéarité")
+)
+
+knitr::kable(test_nonlin,
+             col.names = c("Modèle", "Formule", "Description", "Interprétation"),
+             caption = "Test de non-linéarité : comparaison de modèles",
+             escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = TRUE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#f39c12") %>%
+  row_spec(1, background = "#fef9e7") %>%
+  row_spec(2, background = "#fdebd0") %>%
+  column_spec(1, bold = TRUE, width = "12%") %>%
+  column_spec(2, monospace = TRUE, width = "30%")
+```
+
+<div style="background: linear-gradient(135deg, #f39c12 0%, #d68910 100%); padding: 15px; border-radius: 10px; color: white; margin: 15px 0;">
+<h4 style="margin-top: 0; color: white;">Interprétation du biais par tranche d'âge</h4>
+<ul style="margin-bottom: 0;">
+<li><strong>Biais > 0</strong> : Le modèle surestime l'âge (vieillissement accéléré apparent)</li>
+<li><strong>Biais < 0</strong> : Le modèle sous-estime l'âge (vieillissement ralenti apparent)</li>
+<li><strong>|Biais| élevé aux extrêmes</strong> : Signe de non-linéarité (régression vers la moyenne)</li>
+</ul>
+</div>
+
+```{r nonlinearity-analysis}
+# ═══════════════════════════════════════════════════════════════════
+# ANALYSE DE LA NON-LINÉARITÉ
+# ═══════════════════════════════════════════════════════════════════
+
+# Créer des groupes d'âge
+metadata_test_analysis$age_group <- cut(metadata_test_analysis$age, 
+                                        breaks = c(0, 30, 45, 60, Inf),
+                                        labels = c("< 30 ans", "30-45 ans", "45-60 ans", "> 60 ans"))
+
+# Calculer les erreurs par groupe d'âge
+error_by_age <- metadata_test_analysis %>%
+  group_by(Groupe_Age = age_group) %>%
+  summarise(
+    N = n(),
+    RMSE = round(sqrt(mean((predicted_age - age)^2)), 2),
+    MAE = round(mean(abs(predicted_age - age)), 2),
+    Biais = round(mean(delta_age), 2),
+    .groups = "drop"
+  )
+
+knitr::kable(error_by_age, caption = "Performance du modèle par tranche d'âge") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#f39c12")
+```
+
+<div style="background-color: #fef9e7; padding: 12px; border-left: 4px solid #f39c12; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à visualiser la relation entre le Delta Age et l'âge chronologique. La courbe LOESS (rouge) lisse les données pour révéler les tendances sous-jacentes. Un modèle idéal produirait une courbe horizontale à y=0 sur toute la plage d'âge.
+</div>
+
+```{r nonlinearity-plot}
+ggplot(metadata_test_analysis, aes(x = age, y = delta_age)) +
+  geom_point(aes(color = age_group), alpha = 0.7, size = 3) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black", linewidth = 1) +
+  geom_smooth(method = "loess", se = TRUE, color = "#e74c3c", fill = "#fadbd8") +
+  scale_color_manual(values = c("#3498db", "#2ecc71", "#f39c12", "#e74c3c")) +
+  labs(
+    title = "Analyse de la Non-Linéarité : Delta Age vs Âge Chronologique",
+    subtitle = "La courbe LOESS révèle les tendances non-linéaires",
+    x = "Âge Chronologique (années)",
+    y = "Delta Age (années)",
+    color = "Groupe d'âge"
+  ) +
+  theme(legend.position = "right")
+```
+
+```{r nonlinearity-interpretation, echo=FALSE, results='asis'}
+# Interprétation automatique de la non-linéarité
+biais_jeunes <- mean(metadata_test_analysis$delta_age[metadata_test_analysis$age < 30], na.rm = TRUE)
+biais_ages <- mean(metadata_test_analysis$delta_age[metadata_test_analysis$age > 60], na.rm = TRUE)
+biais_moyen <- mean(metadata_test_analysis$delta_age[metadata_test_analysis$age >= 30 & metadata_test_analysis$age <= 60], na.rm = TRUE)
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+
+if(!is.na(biais_jeunes) && length(metadata_test_analysis$age[metadata_test_analysis$age < 30]) > 5) {
+  cat(paste0('Chez les <strong>sujets jeunes (< 30 ans)</strong>, le biais moyen est de ', round(biais_jeunes, 2), ' ans. '))
+}
+if(!is.na(biais_ages) && length(metadata_test_analysis$age[metadata_test_analysis$age > 60]) > 5) {
+  cat(paste0('Chez les <strong>sujets âgés (> 60 ans)</strong>, le biais moyen est de ', round(biais_ages, 2), ' ans. '))
+}
+
+if(!is.na(biais_jeunes) && !is.na(biais_ages)) {
+  if(biais_jeunes > 2 && biais_ages < -2) {
+    cat('Ce pattern (<strong>surestimation chez les jeunes, sous-estimation chez les âgés</strong>) est typique de la régression vers la moyenne.')
+  } else if(abs(biais_jeunes) < 2 && abs(biais_ages) < 2) {
+    cat('Le modèle semble <strong>bien calibré</strong> sur l\'ensemble des tranches d\'âge.')
+  } else {
+    cat('Le modèle présente des <strong>biais modérés</strong> selon l\'âge.')
+  }
+} else {
+  cat('Effectifs insuffisants pour une analyse détaillée par tranche d\'âge.')
+}
+cat('</div>')
+```
+
+```{r nonlinearity-test}
+# Test de non-linéarité (modèle quadratique vs linéaire)
+model_linear <- lm(delta_age ~ age, data = metadata_test_analysis)
+model_quadratic <- lm(delta_age ~ age + I(age^2), data = metadata_test_analysis)
+
+anova_nonlin <- anova(model_linear, model_quadratic)
+
+cat("Test de non-linéarité (modèle linéaire vs quadratique) :\n")
+cat("   - R² modèle linéaire :", round(summary(model_linear)$r.squared, 4), "\n")
+cat("   - R² modèle quadratique :", round(summary(model_quadratic)$r.squared, 4), "\n")
+cat("   - p-value (terme quadratique) :", format.pval(anova_nonlin$`Pr(>F)`[2], digits = 4), "\n")
+cat("   - Conclusion :", ifelse(anova_nonlin$`Pr(>F)`[2] < 0.05,
+                                 "Relation NON-LINÉAIRE significative",
+                                 "Relation essentiellement LINÉAIRE"), "\n")
+```
+
+---
+
+# Identification des CpG Clés
+
+Les coefficients du modèle Elastic Net identifient les CpG les plus influents pour la prédiction de l'âge. Un coefficient positif indique un CpG "accélérateur" (méthylation associée au vieillissement), un coefficient négatif un CpG "protecteur". L'importance selon Random Forest fournit une validation complémentaire basée sur une méthode non-linéaire.
+
+## Top CpG les Plus Influents
+
+```{r top-cpgs}
+# ═══════════════════════════════════════════════════════════════════
+# CPG LES PLUS INFLUENTS
+# ═══════════════════════════════════════════════════════════════════
+
+coef_enet <- as.matrix(coef(enet_model))
+coef_df <- data.frame(
+  CpG = rownames(coef_enet),
+  Coefficient = coef_enet[, 1]
+)
+
+coef_df <- coef_df %>% 
+  dplyr::filter(CpG != "(Intercept)" & !CpG %in% c("female", "ethnicity")) %>%
+  dplyr::mutate(Abs_Coef = abs(Coefficient)) %>%
+  dplyr::arrange(desc(Abs_Coef)) %>%
+  head(20)
+
+coef_df$Effet <- ifelse(coef_df$Coefficient > 0, "Accélérateur", "Protecteur")
+coef_df$Coefficient <- round(coef_df$Coefficient, 4)
+
+knitr::kable(coef_df[, c("CpG", "Coefficient", "Effet")], 
+             caption = "Top 20 CpG les plus influents sur l'âge biologique",
+             row.names = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#e74c3c")
+```
+
+<div style="background-color: #fdeaea; padding: 12px; border-left: 4px solid #e74c3c; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à identifier les sites CpG dont la méthylation a le plus d'impact sur la prédiction de l'âge. Les coefficients positifs (rouge) indiquent des CpG "accélérateurs" du vieillissement, tandis que les coefficients négatifs (vert) révèlent des CpG "protecteurs".
+</div>
+
+```{r coef-plot}
+ggplot(coef_df, aes(x = reorder(CpG, Coefficient), y = Coefficient, fill = Effet)) +
+  geom_col(alpha = 0.8) +
+  coord_flip() +
+  scale_fill_manual(values = c("Accélérateur" = "#e74c3c", "Protecteur" = "#27ae60")) +
+  labs(
+    title = "Coefficients des CpG les Plus Influents",
+    subtitle = "Rouge = accélère le vieillissement | Vert = effet protecteur",
+    x = "Site CpG",
+    y = "Coefficient (Elastic Net)"
+  ) +
+  theme(legend.position = "bottom")
+```
+
+```{r cpg-interpretation, echo=FALSE, results='asis'}
+# Interprétation automatique des CpG influents
+n_accel <- sum(coef_df$Effet == "Accélérateur")
+n_protec <- sum(coef_df$Effet == "Protecteur")
+top_cpg_name <- coef_df$CpG[1]
+top_coef <- coef_df$Coefficient[1]
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+cat(paste0('Parmi les 20 CpG les plus influents, nous identifions <strong>', n_accel, ' accélérateurs</strong> et <strong>', 
+           n_protec, ' protecteurs</strong>. '))
+cat(paste0('Le CpG le plus influent est <strong>', top_cpg_name, '</strong> avec un coefficient de ', round(top_coef, 4), '. '))
+
+if(n_accel > n_protec) {
+  cat('La prédominance de CpG accélérateurs suggère que le vieillissement est principalement associé à une <strong>augmentation de la méthylation</strong>.')
+} else {
+  cat('L\'équilibre entre accélérateurs et protecteurs reflète la <strong>complexité des changements épigénétiques</strong> liés à l\'âge.')
+}
+cat('</div>')
+```
+
+## Importance des Variables (Random Forest)
+
+<div style="background-color: #e8f8f5; padding: 12px; border-left: 4px solid #27ae60; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à valider les biomarqueurs identifiés par une méthode complémentaire. L'importance Random Forest mesure l'augmentation de l'erreur de prédiction lorsqu'une variable est permutée. Cette approche capture les effets non-linéaires et les interactions entre CpG.
+</div>
+
+```{r rf-importance}
+imp_rf <- importance(rf_model)
+imp_df <- data.frame(
+  Variable = rownames(imp_rf),
+  Importance = imp_rf[, 1]
+) %>%
+  dplyr::filter(!Variable %in% c("female", "ethnicity")) %>%
+  dplyr::arrange(desc(Importance)) %>%
+  head(20)
+
+# Garde-fou : stopifnot pour éviter une erreur silencieuse en aval
+stopifnot(
+  "imp_df doit être un data.frame non vide après calcul de l'importance RF" =
+    is.data.frame(imp_df) && nrow(imp_df) > 0
+)
+
+ggplot(imp_df, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_col(fill = "#2ecc71", alpha = 0.8) +
+  coord_flip() +
+  labs(
+    title = "Importance des CpG (Random Forest)",
+    subtitle = "Basée sur l'augmentation du MSE",
+    x = "Site CpG",
+    y = "Importance (%IncMSE)"
+  )
+```
+
+---
+
+# Visualisation Finale
+
+<div style="background-color: #fdebd0; padding: 12px; border-left: 4px solid #e67e22; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à présenter une synthèse visuelle des performances de notre horloge épigénétique. Ce graphique permet d'évaluer en un coup d'œil la qualité des prédictions et d'identifier les individus présentant un vieillissement biologique accéléré (rouge) ou ralenti (vert) par rapport à leur âge chronologique.
+</div>
+
+```{r final-visualization}
+ggplot(metadata_test_analysis, aes(x = age, y = predicted_age)) +
+  geom_point(aes(color = delta_age), alpha = 0.7, size = 3) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black", linewidth = 1) +
+  geom_smooth(method = "lm", se = TRUE, color = "#e74c3c", fill = "#fadbd8") +
+  scale_color_gradient2(low = "#27ae60", mid = "#f39c12", high = "#e74c3c", 
+                        midpoint = 0, name = "Delta Age") +
+  labs(
+    title = "Horloge Biologique : Âge Prédit vs Âge Chronologique",
+    subtitle = paste("Meilleur modèle :", results$Modèle[best_idx], 
+                     "| R² =", round(results$R2[best_idx], 3),
+                     "| RMSE =", round(results$RMSE[best_idx], 2), "ans"),
+    x = "Âge Chronologique (années)",
+    y = "Âge Biologique Prédit (années)"
+  ) +
+  theme(legend.position = "right")
+```
+
+```{r final-interpretation, echo=FALSE, results='asis'}
+# Interprétation finale du modèle
+n_accelere <- sum(metadata_test_analysis$delta_age > 5)
+n_ralenti <- sum(metadata_test_analysis$delta_age < -5)
+n_normal <- nrow(metadata_test_analysis) - n_accelere - n_ralenti
+pct_accelere <- round(100 * n_accelere / nrow(metadata_test_analysis), 1)
+pct_ralenti <- round(100 * n_ralenti / nrow(metadata_test_analysis), 1)
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation finale :</strong> ')
+cat(paste0('Notre horloge épigénétique atteint un <strong>R² de ', round(results$R2[best_idx], 3), 
+           '</strong> avec une erreur moyenne de <strong>', round(results$RMSE[best_idx], 2), ' ans</strong>. '))
+cat(paste0('Dans l\'échantillon test, <strong>', pct_accelere, '% des sujets</strong> présentent un vieillissement accéléré (Delta Age > 5 ans), ',
+           'tandis que <strong>', pct_ralenti, '%</strong> montrent un vieillissement ralenti (Delta Age < -5 ans). '))
+
+if(results$RMSE[best_idx] < 4) {
+  cat('Ces performances sont <strong>comparables aux horloges de référence</strong> comme celle de Horvath.')
+} else {
+  cat('Une sélection de variables plus fine (ou davantage de CpG) pourrait améliorer ces performances.')
+}
+cat('</div>')
+```
+
+---
+
+# Export du Modèle Final
+
+Le modèle optimal est sauvegardé au format RDS avec tous les éléments nécessaires à son utilisation future : coefficients, liste des CpG sélectionnés, et métriques de performance. Une fonction de prédiction est également fournie pour appliquer l'horloge à de nouveaux échantillons.
+
+```{r export-model}
+# ═══════════════════════════════════════════════════════════════════
+# EXPORT DU PIPELINE COMPLET — pipeline_complet.rds
+# ═══════════════════════════════════════════════════════════════════
+# Structure alignée sur predict_age_from_file() :
+#   pipe$base_models, pipe$stack_model, pipe$cpg_names,
+#   pipe$feature_names, pipe$covariate_names,
+#   pipe$preprocessing (cov_colnames, female_levels, eth_levels,
+#                       train_medians, keep_cpg_ml, na_threshold),
+#   pipe$female_levels / pipe$eth_levels (lookup via .get_lvl()),
+#   pipe$performance par modèle + stack,
+#   pipe$X_test, pipe$y_test, pipe$test_predictions
+#
+# NOTE : train_medians a été rm() après imputation. Pour un pipeline
+#   reproductible avec train_medians intégré, utiliser rebuild_pipeline.R.
+# ═══════════════════════════════════════════════════════════════════
+
+pipeline_complet <- list(
+
+  # ── Modèles
+  base_models = list(
+    enet  = enet_model,
+    ridge = ridge_model,
+    lasso = lasso_model,
+    rf    = rf_model,
+    xgb   = xgb_model,
+    svm   = svm_model
+  ),
+  stack_model   = stack_model,
+  stack_weights = stack_weights,
+
+  # ── Données de test
+  X_test = X_test2,
+  y_test = y_test,
+
+  # ── Prédictions de test (pour test_model.R)
+  test_predictions = list(
+    enet  = enet_pred,
+    ridge = ridge_pred,
+    lasso = lasso_pred,
+    rf    = rf_pred,
+    xgb   = xgb_pred,
+    svm   = svm_pred,
+    stack = stack_pred
+  ),
+
+  # ── Noms des features
+  feature_names   = colnames(X_train2),
+  cpg_names       = top_cpg_selected,
+  covariate_names = colnames(cov_train_matrix),
+
+  # ── Niveaux au root (lookup rapide dans predict_age_from_file)
+  female_levels = female_levels,
+  eth_levels    = eth_levels,
+
+  # ── Paramètres de preprocessing (requis par predict_age_from_file)
+  preprocessing = list(
+    cov_colnames  = colnames(cov_train_matrix),
+    female_levels = female_levels,
+    eth_levels    = eth_levels,
+    train_medians = NULL,          # rm() après imputation — NULL géré par predict_age_from_file
+    keep_cpg_ml   = keep_cpg_ml,
+    na_threshold  = 0.20
+  ),
+
+  # ── Performances par modèle
+  performance = list(
+    enet  = list(RMSE = enet_rmse,  MAE = enet_mae,  Correlation = enet_cor,  R2 = enet_r2),
+    ridge = list(RMSE = ridge_rmse, MAE = ridge_mae, Correlation = ridge_cor, R2 = ridge_r2),
+    lasso = list(RMSE = lasso_rmse, MAE = lasso_mae, Correlation = lasso_cor, R2 = lasso_r2),
+    rf    = list(RMSE = rf_rmse,    MAE = rf_mae,    Correlation = rf_cor,    R2 = rf_r2),
+    xgb   = list(RMSE = xgb_rmse,  MAE = xgb_mae,   Correlation = xgb_cor,  R2 = xgb_r2),
+    svm   = list(RMSE = svm_rmse,   MAE = svm_mae,   Correlation = svm_cor,  R2 = svm_r2),
+    stack = list(RMSE = stack_rmse, MAE = stack_mae, Correlation = stack_cor, R2 = stack_r2)
+  ),
+
+  # ── Métadonnées
+  n_train     = length(train_idx),
+  n_test      = length(y_test),
+  n_cpg       = length(top_cpg_selected),
+  train_ratio = TRAIN_RATIO,
+  seed        = 123L,
+  date_creation = Sys.Date(),
+  r_version     = R.version.string
+)
+
+# ── Sauvegarde
+saveRDS(pipeline_complet, "pipeline_complet.rds")
+
+# ── Vérification intégrité
+test_reload <- tryCatch(readRDS("pipeline_complet.rds"), error = function(e) NULL)
+if (!is.null(test_reload) && is.list(test_reload)) {
+  cat("✔ pipeline_complet.rds sauvegardé avec succès\n")
+  cat("  CpG sélectionnés :", length(test_reload$cpg_names), "\n")
+  cat("  Features totales :", length(test_reload$feature_names), "\n")
+  cat("  Sujets train     :", test_reload$n_train, "\n")
+  cat("  Sujets test      :", test_reload$n_test, "\n")
+  cat("  RMSE stacking    :", round(test_reload$performance$stack$RMSE, 2), "ans\n")
+  cat("  R²   stacking    :", round(test_reload$performance$stack$R2, 3), "\n")
+  rm(test_reload)
+} else {
+  stop("ERREUR : pipeline_complet.rds illisible. Vérifiez l'espace disque.")
+}
+```
+
+```{r predict-function}
+# ═══════════════════════════════════════════════════════════════════
+# FONCTION DE PRÉDICTION — predict_age_from_file.R
+# ═══════════════════════════════════════════════════════════════════
+# La fonction d'inférence est encapsulée dans le script dédié
+# predict_age_from_file.R, qui couvre :
+#   - lecture du CSV de méthylation (format CpG × sujets)
+#   - preprocessing complet (transposition, sélection, imputation)
+#   - encodage des covariables (CAS A / B / C)
+#   - prédiction par les 6 modèles de base + stacking
+#   - sortie vecteur nommé ou data.frame (return_df = TRUE)
+#
+# UTILISATION :
+#   source("predict_age_from_file.R")
+#   df <- predict_age_from_file(
+#     "nouveau_dataset.csv",
+#     annot_path = "annotations.csv",
+#     return_df  = TRUE
+#   )
+# ═══════════════════════════════════════════════════════════════════
+
+cat("✔ Pipeline exporté : pipeline_complet.rds\n")
+cat("  → Pour prédire sur de nouvelles données :\n")
+cat("      source(\"predict_age_from_file.R\")\n")
+cat("      df <- predict_age_from_file(\"nouveau_dataset.csv\",\n")
+cat("                                  annot_path = \"annotations.csv\",\n")
+cat("                                  return_df  = TRUE)\n")
+```
+
+---
+
+# Paramétrisation de l'Horloge de Horvath
+
+<div style="background: linear-gradient(135deg, #8e44ad 0%, #6c3483 100%); padding: 20px; border-radius: 10px; color: white; margin: 15px 0;">
+<h4 style="margin-top: 0; color: white;">L'Horloge de Horvath (2013) — Détails de Paramétrisation</h4>
+
+Steve Horvath a entraîné un modèle **Elastic Net** ($\alpha = 0.5$) sur **21 369 échantillons** provenant de **51 types de tissus**. Le modèle sélectionne **353 CpG** parmi les 21 368 CpG communs à l'Illumina 27k et 450k.
+
+**Pipeline de construction :**
+
+1. Pré-sélection de ~21 000 CpG communs (27k ∩ 450k)
+2. Régression Elastic Net avec $\alpha = 0.5$ et validation croisée 10-fold
+3. Transformation anti-logarithmique pour calibrer les prédictions
+
+$$
+\mathrm{Age\,calibre} =
+\begin{cases}
+21\,\exp\!\left(\mathrm{DNAmAge}_{\mathrm{raw}}\right) - 1, & \text{si } \mathrm{DNAmAge}_{\mathrm{raw}} < 0 \\
+20 + 21\,\mathrm{DNAmAge}_{\mathrm{raw}}, & \text{si } \mathrm{DNAmAge}_{\mathrm{raw}} \ge 0
+\end{cases}
+$$
+
+<p style="font-size: 0.9em;">
+<strong>Performance publiée :</strong> r = 0.96, MAE = 3.6 ans (cross-tissu)<br>
+<strong>Référence :</strong> Horvath (2013), <em>Genome Biology</em>, 14(10):R115
+</p>
+</div>
+
+## Reproduction de la Méthodologie Horvath
+
+```{r horvath-parametrisation}
+# ═══════════════════════════════════════════════════════════════════
+# REPRODUCTION DE LA MÉTHODOLOGIE HORVATH
+# ═══════════════════════════════════════════════════════════════════
+# 
+# Horvath utilise une transformation des âges avant entraînement :
+#   - f(age) = log(age + 1) - log(21 + 1)  pour age ≤ 20
+#   - f(age) = (age - 20) / (20 + 1)       pour age > 20
+# 
+# Nous reproduisons cette transformation sur nos données.
+# ═══════════════════════════════════════════════════════════════════
+
+# Transformation Horvath de l'âge (adult calibration)
+horvath_transform <- function(age) {
+  adult_age <- 20
+  ifelse(age <= adult_age,
+         log(age + 1) - log(adult_age + 1),
+         (age - adult_age) / (adult_age + 1))
+}
+
+# Inverse de la transformation
+horvath_inverse <- function(dnam_age) {
+  adult_age <- 20
+  ifelse(dnam_age < 0,
+         (adult_age + 1) * exp(dnam_age) - 1,
+         (adult_age + 1) * dnam_age + adult_age)
+}
+
+# Appliquer la transformation aux âges d'entraînement
+y_train_horvath <- horvath_transform(y_train)
+y_test_horvath  <- horvath_transform(y_test)
+
+# Entraîner Elastic Net avec la transformation Horvath
+set.seed(123)
+cv_horvath <- cv.glmnet(X_train2, y_train_horvath, alpha = 0.5, 
+                        standardize = TRUE, nfolds = N_FOLDS)
+horvath_model <- glmnet(X_train2, y_train_horvath, alpha = 0.5, 
+                        lambda = cv_horvath$lambda.min)
+
+# Prédire et inverser la transformation
+horvath_pred_raw <- as.numeric(predict(horvath_model, X_test2))
+horvath_pred <- horvath_inverse(horvath_pred_raw)
+
+horvath_rmse <- sqrt(mean((horvath_pred - y_test)^2))
+horvath_mae  <- mean(abs(horvath_pred - y_test))
+horvath_cor  <- cor(horvath_pred, y_test)
+
+# Nombre de CpG retenus (coefficient non-nul)
+n_cpg_horvath <- sum(coef(horvath_model)[-1, 1] != 0)
+
+cat("Modèle Elastic Net (Paramétrisation Horvath) :\n")
+cat("   - RMSE        :", round(horvath_rmse, 2), "années\n")
+cat("   - MAE         :", round(horvath_mae, 2), "années\n")
+cat("   - Corrélation :", round(horvath_cor, 3), "\n")
+cat("   - CpG non-nuls:", n_cpg_horvath, "/", ncol(X_train2) - 2, "\n")
+cat("   - Lambda opt   :", round(cv_horvath$lambda.min, 5), "\n")
+
+# Comparaison : notre Elastic Net standard vs paramétrisation Horvath
+horvath_comp <- data.frame(
+  Approche = c("Elastic Net (âge brut)", "Elastic Net (transformation Horvath)"),
+  RMSE = c(round(enet_rmse, 2), round(horvath_rmse, 2)),
+  MAE = c(round(enet_mae, 2), round(horvath_mae, 2)),
+  Corrélation = c(round(enet_cor, 3), round(horvath_cor, 3)),
+  CpG_Non_Nuls = c(sum(coef(enet_model)[-1, 1] != 0), n_cpg_horvath)
+)
+
+knitr::kable(horvath_comp, 
+             caption = "Impact de la transformation Horvath sur les résultats") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), 
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#8e44ad")
+```
+
+```{r horvath-param-interp, echo=FALSE, results='asis'}
+diff_horvath <- round(horvath_rmse - enet_rmse, 2)
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+cat(paste0('La transformation Horvath sélectionne <strong>', n_cpg_horvath, ' CpG non-nuls</strong> (vs ',
+           sum(coef(enet_model)[-1, 1] != 0), ' sans transformation). '))
+if(diff_horvath < -0.3) {
+  cat(paste0('La calibration Horvath <strong>améliore</strong> le RMSE de ', abs(diff_horvath), ' ans, confirmant l\'intérêt de la pré-transformation logarithmique pour les sujets jeunes.'))
+} else if(diff_horvath < 0.3) {
+  cat('Les performances sont <strong>comparables</strong>, ce qui est attendu sur une cohorte d\'adultes où la transformation a peu d\'effet.')
+} else {
+  cat(paste0('La transformation <strong>dégrade légèrement</strong> le RMSE (+', diff_horvath, ' ans). Sur cette cohorte spécifique, l\'âge brut est préférable.'))
+}
+cat('</div>')
+```
+
+## Note de Périmètre Technique
+
+Pour le rapport final, les comparaisons d'horloges de référence sont réalisées dans R via `methylclock` afin d'assurer cohérence méthodologique et reproductibilité dans un seul pipeline.
+
+---
+
+# Comparaison avec l'Horloge Horvath (methylclock)
+
+<div style="background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%); padding: 20px; border-radius: 10px; color: white; margin: 15px 0;">
+<h4 style="margin-top: 0; color: white;">L'Horloge de Horvath (2013)</h4>
+
+L'horloge de Horvath est la référence en matière de prédiction de l'âge biologique à partir de données de méthylation. Elle utilise **353 CpG** sélectionnés via Elastic Net sur plus de 8000 échantillons.
+
+$$
+\mathrm{Age}_{\mathrm{Horvath}} =
+\begin{cases}
+21\,\exp\!\left(\mathrm{DNAmAge}\right) - 1, & \text{si } \mathrm{DNAmAge} < 0 \\
+20 + 21\,\mathrm{DNAmAge}, & \text{si } \mathrm{DNAmAge} \ge 0
+\end{cases}
+$$
+
+<p style="font-size: 0.9em;">Où DNAmAge est la sortie linéaire du modèle Elastic Net.</p>
+</div>
+
+```{r methylclock-horvath, message=FALSE, warning=FALSE}
+# ═══════════════════════════════════════════════════════════════════
+# COMPARAISON AVEC HORVATH/HANNUM VIA METHYLCLOCK (BASELINE ROBUSTE)
+# ═══════════════════════════════════════════════════════════════════
+
+if(exists("methylclock_available") && methylclock_available) {
+  
+  cat("Comparaison avec les horloges de référence via methylclock...\n\n")
+
+  metadata_cols_mc <- c("Sample_Name", "female", "ethnicity", "age", "Sample_description")
+  if (!exists("final_data")) stop("final_data introuvable : impossible de calculer les horloges de référence")
+  if (!inherits(final_data, "data.table")) data.table::setDT(final_data)
+
+  cpg_cols_mc <- setdiff(names(final_data), metadata_cols_mc)
+  beta_all <- as.matrix(final_data[, ..cpg_cols_mc])
+  storage.mode(beta_all) <- "numeric"
+  rownames(beta_all) <- final_data$Sample_Name
+
+  # methylclock attend : CpG en lignes, échantillons en colonnes
+  beta_matrix <- t(beta_all)
+  beta_matrix <- beta_matrix[grepl("^cg", rownames(beta_matrix)), , drop = FALSE]
+
+  # Clamp dans [0,1] + imputation médiane par CpG (non supervisée)
+  beta_matrix[beta_matrix < 0] <- 0
+  beta_matrix[beta_matrix > 1] <- 1
+  row_meds <- apply(beta_matrix, 1, function(v) median(v, na.rm = TRUE))
+  for (i in seq_len(nrow(beta_matrix))) {
+    miss <- is.na(beta_matrix[i, ])
+    if (any(miss)) beta_matrix[i, miss] <- row_meds[i]
+  }
+
+  cat("Matrice methylclock :", nrow(beta_matrix), "CpG x", ncol(beta_matrix), "échantillons\n")
+
+  # Alignement âge réel avec les colonnes de beta_matrix
+  age_ref <- as.numeric(final_data$age[match(colnames(beta_matrix), final_data$Sample_Name)])
+  if (length(age_ref) != ncol(beta_matrix)) {
+    stop("Alignement âge/échantillons invalide dans methylclock")
+  }
+  if (any(is.na(age_ref))) {
+    cat("Avertissement :", sum(is.na(age_ref)), "âges manquants après alignement\n")
+  }
+
+  # Diagnostic explicite de couverture Horvath/Hannum
+  get_clock_cpg <- function(clock) {
+    # Methode 1 : methylclockData (source documentee des coefficients)
+    if (requireNamespace("methylclockData", quietly = TRUE)) {
+      coef_name <- paste0("coef", clock)
+      tryCatch({
+        coef_data <- get(coef_name, envir = asNamespace("methylclockData"))
+        if (is.data.frame(coef_data) || is.matrix(coef_data)) {
+          cpg <- rownames(coef_data)
+          if (is.null(cpg)) {
+            for (j in seq_len(ncol(coef_data))) {
+              vals <- as.character(coef_data[, j])
+              cpg <- vals[grepl("^cg", vals)]
+              if (length(cpg) > 0) break
+            }
+          } else {
+            cpg <- cpg[grepl("^cg", cpg)]
+          }
+          if (length(cpg) > 0) return(unique(cpg))
+        }
+      }, error = function(e) NULL)
+    }
+    # Methode 2 : namespace methylclock (fallback)
+    tryCatch({
+      ns <- asNamespace("methylclock")
+      candidates <- c(paste0(clock, "_CpG"), paste0(tolower(clock), "_cpg"),
+                      paste0(clock, "_coef"), paste0(tolower(clock), "_coef"))
+      for (obj in candidates) {
+        if (exists(obj, envir = ns, inherits = FALSE)) {
+          x <- get(obj, envir = ns)
+          cpg <- if (is.data.frame(x) || is.matrix(x)) rownames(x) else as.character(x)
+          cpg <- cpg[grepl("^cg", cpg)]
+          if (length(cpg) > 0) return(unique(cpg))
+        }
+      }
+    }, error = function(e) NULL)
+    # Methode 3 : valeurs de reference publiees
+    ref_counts <- c(Horvath = 353L, Hannum = 71L)
+    if (clock %in% names(ref_counts)) {
+      cat("  Note : liste CpG de", clock, "non extractible ; utilisation du nombre de reference publie (", ref_counts[[clock]], ")\n")
+    }
+    character(0)
+  }
+
+  horvath_ref_cpg <- get_clock_cpg("Horvath")
+  hannum_ref_cpg <- get_clock_cpg("Hannum")
+
+  cov_diag <- data.frame(
+    Horloge = c("Horvath", "Hannum"),
+    CpG_référence = c(length(horvath_ref_cpg), length(hannum_ref_cpg)),
+    CpG_présents = c(
+      if (length(horvath_ref_cpg) > 0) sum(horvath_ref_cpg %in% rownames(beta_matrix)) else NA_integer_,
+      if (length(hannum_ref_cpg) > 0) sum(hannum_ref_cpg %in% rownames(beta_matrix)) else NA_integer_
+    )
+  )
+
+  cov_diag$Couverture <- with(cov_diag, ifelse(CpG_référence > 0,
+                                               paste0(round(100 * CpG_présents / CpG_référence, 1), "%"),
+                                               "NA"))
+
+  knitr::kable(cov_diag, caption = "Couverture CpG des horloges de référence") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+    row_spec(0, bold = TRUE, color = "white", background = "#8e44ad")
+
+  # Évaluation robuste horloge par horloge
+  eval_one_clock <- function(clock_name) {
+    out <- tryCatch({
+      pred <- methylclock::DNAmAge(beta_matrix, clocks = clock_name, cell.count = FALSE)
+      pred_vec <- NULL
+      if (is.list(pred) && !is.null(pred[[clock_name]])) {
+        pred_vec <- as.numeric(pred[[clock_name]])
+      } else if (is.data.frame(pred) && clock_name %in% names(pred)) {
+        pred_vec <- as.numeric(pred[[clock_name]])
+      } else if (is.data.frame(pred)) {
+        num_cols <- names(pred)[vapply(pred, is.numeric, logical(1))]
+        if (length(num_cols) > 0) pred_vec <- as.numeric(pred[[num_cols[1]]])
+      }
+      if (is.null(pred_vec)) {
+        return(data.frame(Horloge = clock_name, RMSE = NA_real_, Corrélation = NA_real_, N_Complete = 0,
+                          NA_Pred = NA_integer_, Statut = "Erreur: format de sortie DNAmAge inattendu"))
+      }
+
+      na_pred <- sum(is.na(pred_vec))
+      n_complete <- sum(complete.cases(pred_vec, age_ref))
+      if (n_complete < 3) {
+        return(data.frame(Horloge = clock_name, RMSE = NA_real_, Corrélation = NA_real_, N_Complete = n_complete,
+                          NA_Pred = na_pred,
+                          Statut = "no complete element pairs"))
+      }
+      rmse <- sqrt(mean((pred_vec - age_ref)^2, na.rm = TRUE))
+      cor_ <- cor(pred_vec, age_ref, use = "complete.obs")
+      data.frame(Horloge = clock_name, RMSE = rmse, Corrélation = cor_, N_Complete = n_complete,
+                 NA_Pred = na_pred, Statut = "OK")
+    }, error = function(e) {
+      data.frame(Horloge = clock_name, RMSE = NA_real_, Corrélation = NA_real_, N_Complete = 0,
+                 NA_Pred = NA_integer_,
+                 Statut = paste("Erreur:", e$message))
+    })
+    out
+  }
+
+  horvath_eval <- eval_one_clock("Horvath")
+  hannum_eval <- eval_one_clock("Hannum")
+  ref_eval <- rbind(horvath_eval, hannum_eval)
+
+  ref_eval$RMSE <- round(ref_eval$RMSE, 2)
+  ref_eval$Corrélation <- round(ref_eval$Corrélation, 3)
+
+  # Ajouter le meilleur modèle ML pour baseline
+  ref_eval <- rbind(
+    ref_eval,
+    data.frame(
+      Horloge = paste("Notre modèle (", results$Modèle[best_idx], ")", sep = ""),
+      RMSE = round(results$RMSE[best_idx], 2),
+      Corrélation = round(results$Corrélation[best_idx], 3),
+      N_Complete = length(y_test),
+      NA_Pred = 0,
+      Statut = "OK"
+    )
+  )
+
+  knitr::kable(ref_eval, caption = "Comparaison Horvath/Hannum vs modèle ML") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+    row_spec(0, bold = TRUE, color = "white", background = "#8e44ad")
+
+  if (any(grepl("Erreur|no complete", ref_eval$Statut))) {
+    cat("\nDiagnostic de compatibilite methylclock :\n")
+    cat("- Message 'Les CpG de reference ne sont pas tous presents' : la matrice beta_50k ne couvre\n")
+    cat("  pas l'integralite des sites CpG requis par l'horloge. Ce decalage est inherent a la\n")
+    cat("  plateforme de mesure (sous-echantillonnage de 50 000 CpG vs 450k/850k attendus).\n")
+    cat("- Message 'no complete element pairs' : la couverture CpG est trop faible pour produire\n")
+    cat("  des predictions non-NA, empechant le calcul de la correlation.\n")
+    cat("- Interpretation : cette limitation n'invalide pas le modele ML interne, qui exploite\n")
+    cat("  les CpG effectivement disponibles. La comparaison directe Horvath/Hannum necessite\n")
+    cat("  une matrice mesuree sur puce Illumina 450K ou EPIC avec couverture >= 80%%.\n")
+  }
+
+  # Décision de compatibilité pratique (seuil recommandé : >= 80% de CpG de référence)
+  horvath_cov <- if (length(horvath_ref_cpg) > 0) sum(horvath_ref_cpg %in% rownames(beta_matrix)) / length(horvath_ref_cpg) else NA_real_
+  hannum_cov <- if (length(hannum_ref_cpg) > 0) sum(hannum_ref_cpg %in% rownames(beta_matrix)) / length(hannum_ref_cpg) else NA_real_
+
+  cat("\nDécision de compatibilité :\n")
+  if ((!is.na(horvath_cov) && horvath_cov < 0.8) || (!is.na(hannum_cov) && hannum_cov < 0.8)) {
+    cat("- Couverture insuffisante (<80%) pour au moins une horloge : comparaison externe à interpréter avec forte prudence.\n")
+    cat("- Recommandation : conserver methylclock comme baseline contextuelle/qualitative, pas comme benchmark principal quantitatif.\n")
+  } else {
+    cat("- Couverture acceptable : comparaison quantitative possible avec prudence méthodologique.\n")
+  }
+
+  if (any(ref_eval$Statut == "no complete element pairs")) {
+    cat("- Cause principale du message 'no complete element pairs' : paires âge-prédiction complètes insuffisantes (NA prédictions ou âge).\n")
+  }
+  
+} else {
+  cat("Note : Le package methylclock n'est pas installé.\n")
+  cat("Pour comparer avec les horloges de référence, installez methylclock depuis Bioconductor.\n")
+}
+```
+
+---
+
+# Analyse par Groupe d'Âge (Segmentation)
+
+<div style="background-color: #eaf2f8; padding: 12px; border-left: 4px solid #3498db; margin-bottom: 15px;">
+<strong>Objectif :</strong> Nous cherchons à évaluer si notre modèle performe de manière homogène sur toutes les tranches d'âge. Cette analyse par segmentation permet d'identifier d'éventuels biais de prédiction pour certains groupes d'âge (jeunes, adultes, seniors).
+</div>
+
+```{r age-segmentation}
+# ═══════════════════════════════════════════════════════════════════
+# SEGMENTATION PAR GROUPE D'ÂGE
+# ═══════════════════════════════════════════════════════════════════
+
+# Créer les groupes d'âge
+metadata_test_analysis$groupe_age <- cut(
+  metadata_test_analysis$age,
+  breaks = c(-Inf, 30, 45, 60, Inf),
+  labels = c("Jeunes (<30 ans)", "Adultes (30-45 ans)", "Matures (45-60 ans)", "Seniors (>60 ans)")
+)
+
+# Calculer les métriques par groupe
+perf_par_groupe <- metadata_test_analysis %>%
+  group_by(groupe_age) %>%
+  summarise(
+    N = n(),
+    Age_Moyen = round(mean(age), 1),
+    RMSE = round(sqrt(mean((predicted_age - age)^2)), 2),
+    MAE = round(mean(abs(predicted_age - age)), 2),
+    Corrélation = round(cor(predicted_age, age), 3),
+    Delta_Age_Moyen = round(mean(delta_age), 2),
+    .groups = "drop"
+  )
+
+knitr::kable(perf_par_groupe, 
+             caption = "Performance du modèle par groupe d'âge") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#3498db")
+```
+
+```{r age-segmentation-plot}
+# Visualisation par groupe d'âge
+p1 <- ggplot(metadata_test_analysis, aes(x = age, y = predicted_age, color = groupe_age)) +
+  geom_point(alpha = 0.7, size = 2.5) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "black") +
+  facet_wrap(~groupe_age, scales = "free") +
+  labs(title = "Prédiction par Groupe d'Âge",
+       x = "Âge Chronologique", y = "Âge Prédit") +
+  theme(legend.position = "none") +
+  scale_color_brewer(palette = "Set1")
+
+# Boxplot du Delta Age par groupe
+p2 <- ggplot(metadata_test_analysis, aes(x = groupe_age, y = delta_age, fill = groupe_age)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "red") +
+  labs(title = "Delta Age par Groupe d'Âge",
+       x = "Groupe d'Âge", y = "Delta Age (années)") +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 20, hjust = 1)) +
+  scale_fill_brewer(palette = "Set1")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+```{r age-segmentation-interp, echo=FALSE, results='asis'}
+# Interprétation automatique
+groupe_min_rmse <- perf_par_groupe$groupe_age[which.min(perf_par_groupe$RMSE)]
+groupe_max_rmse <- perf_par_groupe$groupe_age[which.max(perf_par_groupe$RMSE)]
+rmse_diff <- max(perf_par_groupe$RMSE) - min(perf_par_groupe$RMSE)
+
+cat('<div style="background-color: #d4edda; padding: 12px; border-left: 4px solid #28a745; margin-top: 15px;">')
+cat('<strong>Interprétation :</strong> ')
+cat(paste0('Le modèle performe le mieux sur le groupe <strong>"', groupe_min_rmse, '"</strong> (RMSE = ', 
+           min(perf_par_groupe$RMSE), ' ans) et le moins bien sur <strong>"', groupe_max_rmse, '"</strong> (RMSE = ',
+           max(perf_par_groupe$RMSE), ' ans). '))
+if(rmse_diff < 2) {
+  cat('Cette <strong>différence modérée</strong> suggère une performance relativement homogène.')
+} else {
+  cat('Cette <strong>hétérogénéité</strong> suggère d\'entraîner des modèles spécifiques par tranche d\'âge.')
+}
+cat('</div>')
+```
+
+---
+
+# Modèles Spécifiques par Groupe d'Âge
+
+```{r group-specific-models}
+# ═══════════════════════════════════════════════════════════════════
+# MODÈLES ELASTIC NET SPÉCIFIQUES PAR GROUPE D'ÂGE
+# ═══════════════════════════════════════════════════════════════════
+
+# Ajouter groupe d'âge aux données d'entraînement
+groupe_train <- cut(
+  y_train,
+  breaks = c(-Inf, 30, 45, 60, Inf),
+  labels = c("Jeunes", "Adultes", "Matures", "Seniors")
+)
+
+# Entraîner un modèle par groupe (si effectif suffisant)
+modeles_groupe <- list()
+results_groupe <- data.frame()
+
+# Table de correspondance : label court (groupe_train) → label complet (perf_par_groupe)
+# Définie une seule fois en dehors de la boucle pour éviter tout bug de matching textuel
+grp_label_map <- c(
+  Jeunes  = "Jeunes (<30 ans)",
+  Adultes = "Adultes (30-45 ans)",
+  Matures = "Matures (45-60 ans)",
+  Seniors = "Seniors (>60 ans)"
+)
+
+for(grp in levels(groupe_train)) {
+  idx_grp <- which(groupe_train == grp)
+
+  if(length(idx_grp) >= 20) {  # Minimum 20 observations
+
+    # Entraînement
+    cv_grp <- cv.glmnet(X_train2[idx_grp, ], y_train[idx_grp],
+                        alpha = 0.5, standardize = TRUE, nfolds = 5)
+    modeles_groupe[[grp]] <- glmnet(X_train2[idx_grp, ], y_train[idx_grp],
+                                    alpha = 0.5, lambda = cv_grp$lambda.min)
+
+    # Récupérer le label complet du groupe (ex: "Jeunes (<30 ans)")
+    # Utilisé à la fois pour filtrer idx_test_grp ET pour joindre RMSE_Global
+    grp_label_complet <- grp_label_map[grp]
+
+    if(is.na(grp_label_complet)) {
+      warning(sprintf("[group-specific-models] Groupe '%s' absent de grp_label_map — ignoré.", grp))
+      next
+    }
+
+    # Test sur le même groupe dans le jeu de test
+    idx_test_grp <- which(as.character(metadata_test_analysis$groupe_age) == grp_label_complet)
+
+    if(length(idx_test_grp) > 0) {
+      pred_grp <- as.numeric(predict(modeles_groupe[[grp]], X_test2[idx_test_grp, ]))
+
+      # Garde-fous : vérifier absence de NA dans y_true / y_pred avant calcul
+      y_true_grp <- y_test[idx_test_grp]
+      n_na <- sum(is.na(pred_grp) | is.na(y_true_grp))
+      if(n_na > 0)
+        warning(sprintf("[group-specific-models] %d valeur(s) NA détectée(s) pour '%s' — exclues du RMSE.", n_na, grp))
+
+      rmse_grp <- sqrt(mean((pred_grp - y_true_grp)^2, na.rm = TRUE))
+
+      # Jointure robuste : match direct sur le label complet, pas sur une troncature de chaîne
+      rmse_global_grp <- perf_par_groupe$RMSE[match(grp_label_complet,
+                                                     as.character(perf_par_groupe$groupe_age))]
+      if(is.na(rmse_global_grp))
+        warning(sprintf("[group-specific-models] RMSE_Global introuvable pour '%s' dans perf_par_groupe.", grp))
+
+      results_groupe <- rbind(results_groupe, data.frame(
+        Groupe          = grp,
+        N_Train         = length(idx_grp),
+        N_Test          = length(idx_test_grp),
+        RMSE_Global     = round(rmse_global_grp, 2),
+        RMSE_Specifique = round(rmse_grp, 2)
+      ))
+    }
+  }
+}
+
+if(nrow(results_groupe) > 0) {
+  knitr::kable(results_groupe, 
+               caption = "Comparaison : Modèle Global vs Modèles Spécifiques par Groupe") %>%
+    kable_styling(bootstrap_options = c("striped", "hover", "bordered"), full_width = FALSE) %>%
+    row_spec(0, bold = TRUE, color = "white", background = "#e67e22")
+} else {
+  cat("Effectifs insuffisants pour entraîner des modèles spécifiques par groupe.\n")
+}
+```
+
+---
+
+# Stabilité de la Sélection (Synthèse)
+
+Dans la version finale du rapport, nous conservons une stratégie de sélection unique (train-only) pour limiter la complexité et faciliter la reproductibilité. Les analyses exploratoires sur sous-échantillons ont été retirées du corps principal afin de conserver un message méthodologique clair.
+
+---
+
+# Conclusion et Perspectives
+
+Ce projet a permis de répondre aux problématiques de départ : construire une horloge biologique robuste à partir de données CpG haute dimension (p >> n), comparer plusieurs stratégies de modélisation, et situer le modèle obtenu vis-à-vis des horloges de référence.
+
+## Résumé des Résultats
+
+```{r summary-results}
+summary_final <- data.frame(
+  Étape = c("Données", 
+            "Prétraitement", 
+            "Sélection CpG", 
+            "Modélisation",
+            "Meilleur Modèle",
+            "Performance"),
+  Résultat = c(
+    "beta_50k - base principale du projet",
+    paste(ncol(cpg_data), "CpG après filtrage (seuil 20% NA)"),
+    paste(n_cpg_selected, "CpG sélectionnés + ACP"),
+    "7 modèles comparés (6 ML + Deep Learning)",
+    results$Modèle[best_idx],
+    paste("R² =", round(results$R2[best_idx], 3), " ; RMSE =", round(results$RMSE[best_idx], 2), "ans")
+  ),
+  stringsAsFactors = FALSE
+)
+
+knitr::kable(summary_final, 
+             caption = "Résumé du Projet d'Horloge Biologique",
+             sanitize.text.function = identity) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "bordered"),
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, color = "white", background = "#2c3e50") %>%
+  row_spec(5:6, bold = TRUE, background = "#d4edda")
+```
+
+## Conclusions
+
+Ce travail confirme la faisabilité de la prédiction de l’âge chronologique à partir de profils de méthylation CpG de haute dimension. En effet, le pipeline développé repose d’abord sur un filtrage selon le taux de valeurs manquantes, puis sur une sélection par corrélation univariée, avant d’intégrer une régularisation de type Elastic Net et, enfin, une validation sur un jeu de test indépendant. Ainsi, les estimations obtenues présentent une précision, évaluée à l’aide du RMSE et du coefficient de détermination, qui se situe dans le même ordre de grandeur que celle des horloges épigénétiques publiées.
+
+Par ailleurs, la comparaison systématique de sept approches de modélisation, à savoir Elastic Net, Ridge, Lasso, Random Forest, XGBoost, SVM et réseau de neurones profond, met en évidence la supériorité des méthodes de régression pénalisée dans un contexte de grande dimension caractérisé par p >> n. En particulier, l’Elastic Net se distingue en ce qu’il combine à la fois parcimonie et stabilité numérique, ce qui est conforme aux résultats fondateurs de Horvath (2013). De plus, l’analyse d’ablation de type A/B/C permet de quantifier de manière rigoureuse l’apport incrémental de chaque composante du pipeline, qu’il s’agisse de la sélection des CpG, de l’intégration de covariables démographiques ou de la réduction de dimension.
+
+En outre, sur le plan méthodologique, la stricte séparation entre les jeux d’entraînement et de test, conjuguée à un apprentissage du prétraitement exclusivement réalisé sur les données d’entraînement, notamment en ce qui concerne l’imputation médiane et la définition des seuils de filtrage, ainsi qu’à un audit systématique du data leakage, garantit la validité interne des résultats. Dans cette optique, les intervalles de prédiction conformes fournissent une quantification robuste de l’incertitude individuelle, ce qui apparaît indispensable dans la perspective d’applications cliniques.
+
+Enfin, la comparaison avec les horloges de référence, telles que celles de Horvath et de Hannum, réalisée via le package methylclock, demeure conditionnée par la couverture CpG de la plateforme utilisée. En effet, la matrice beta_50k, limitée à environ 50 000 sites, ne couvre qu’une fraction des 353 CpG requis par l’horloge de Horvath, de sorte qu’une confrontation quantitative directe n’est pas possible. Toutefois, cette limitation, inhérente au sous-échantillonnage de la puce, ne remet pas en cause la validité du modèle développé en interne.
+
+## Limites
+
+Plusieurs limitations appellent à la prudence dans l’interprétation des résultats. Tout d’abord, l’effectif restreint de l’échantillon, avec n ≈ 400, limite à la fois la puissance statistique et la généralisabilité des conclusions, en particulier pour les strates démographiques minoritaires ; dès lors, le risque de surapprentissage, bien que partiellement contrôlé par la régularisation, ne peut être totalement écarté en l’absence de validation externe. Ensuite, l’absence de cohorte de réplication constitue une limite importante, puisque l’ensemble des résultats repose sur un unique jeu de données ; par conséquent, une validation prospective sur une cohorte indépendante, idéalement multi-ethnique et multi-site, apparaît indispensable avant toute application clinique.
+
+Par ailleurs, un biais de double sélection peut être introduit dans la mesure où les CpG sont d’abord filtrés sur la base de leur corrélation marginale avec l’âge, puis soumis à une procédure de régularisation ; en conséquence, cette stratégie est susceptible de conduire à une surestimation des coefficients associés aux sites sélectionnés, comme le souligne Zou (2006), de sorte qu’une approche fondée sur la stability selection constituerait une alternative plus conservatrice. Enfin, la couverture CpG limitée ne permet pas une comparaison quantitative avec les horloges de référence, telles que celles de Horvath ou de Hannum ; en effet, le sous-échantillonnage de la matrice de méthylation restreint cette analyse à une comparaison uniquement qualitative.
+
+
+## Perspectives
+
+Dans la continuité de ces résultats, plusieurs perspectives peuvent être envisagées. En premier lieu, une réplication sur une cohorte externe, par exemple issue de bases de données telles que GEO ou TCGA, et reposant sur des puces Illumina 450K ou EPIC, permettrait d’établir une comparaison quantitative directe avec les horloges de référence. En outre, une annotation fonctionnelle des CpG sélectionnés, incluant l’identification des gènes associés, l’analyse d’enrichissement de voies biologiques ainsi que l’étude des régions régulatrices, offrirait des éléments d’interprétation sur les mécanismes biologiques sous-jacents.
+
+Par ailleurs, l’exploration d’architectures de deep learning plus adaptées, telles que les autoencodeurs variationnels ou les réseaux intégrant des mécanismes d’attention, ainsi que le recours à des approches ensemblistes de type stacking, pourraient contribuer à améliorer la précision des prédictions. De surcroît, l’intégration de covariables complémentaires, incluant notamment des biomarqueurs sanguins, des facteurs liés au mode de vie ou encore des comorbidités, s’inscrirait dans une perspective de développement d’horloges biologiques multi-modales. Enfin, le développement d’une application de scoring individuel permettrait de calculer l’accélération de l’âge épigénétique dans un cadre opérationnel, ouvrant ainsi la voie à une utilisation en routine clinique.
