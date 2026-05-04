@@ -67,7 +67,7 @@ et affichées automatiquement lors du chargement via `source("load_pipeline.R")`
 
 ## Rapport interactif (HTML)
 
-Le rapport HTML interactif complet (généré par `rmarkdown::render("age_bio_4.Rmd")`) est disponible ici :
+Le rapport HTML interactif complet est disponible ici :
 https://drive.google.com/file/d/1jiI2ka-PcJ3ST_yijPxMWz-ASISrHSEC/view?usp=drive_link
 
 > Le rapport inclut les visualisations, les courbes d'apprentissage Deep Learning,
